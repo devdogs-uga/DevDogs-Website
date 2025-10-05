@@ -1,10 +1,10 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { google } from "googleapis";
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import type { NextRequest } from "next/server";
 import { db } from "~/server/db";
-import { profiles, sessions, users } from "~/server/db/schema";
+import { sessions, users } from "~/server/db/schema";
 import { env } from "~/env";
 
 export const googleOAuth2 = new google.auth.OAuth2(
@@ -68,48 +68,46 @@ export async function handleOAuthRedirect(request: NextRequest) {
 
   const email = profile.data.email;
 
-  const { id } =
-    (await db.query.users.findFirst({
-      where: eq(users.email, email),
-    })) ??
-    (await db.transaction(async (tx) => {
-      const [insertedProfile] = await tx
-        .insert(profiles)
+  const token = await db
+    .transaction(async (tx) => {
+      const [insertedUser] = await tx
+        .insert(users)
         .values({
+          email,
           name: profile.data.name ?? "UGA Student",
           image: profile.data.picture,
           type: "user",
         })
+        .onDuplicateKeyUpdate({
+          set: { id: sql`id` },
+        })
         .$returningId();
 
-      const id = insertedProfile?.id;
-
-      if (id === undefined) {
+      if (!insertedUser) {
         tx.rollback();
         throw new Error("🍸 How did we get here?");
       }
 
-      await tx.insert(users).values({
-        id,
-        email,
-      });
+      const [insertedSession] = await tx
+        .insert(sessions)
+        .values({
+          userId: insertedUser.id,
+          userAgent: request.headers.get("user-agent"),
+        })
+        .$returningId();
 
-      return { id };
-    }));
+      if (!insertedSession) {
+        tx.rollback();
+        throw new Error("🍸 How did we get here?");
+      }
 
-  const [insertedSession] = await db
-    .insert(sessions)
-    .values({
-      userId: id,
-      userAgent: request.headers.get("user-agent"),
+      return insertedSession.token;
     })
-    .$returningId();
+    .catch(() => {
+      notFound();
+    });
 
-  if (!insertedSession) {
-    notFound();
-  }
-
-  console.log(insertedSession.token);
-  (await cookies()).set("session", insertedSession.token);
+  console.log(token);
+  (await cookies()).set("session", token);
   redirect("/");
 }
