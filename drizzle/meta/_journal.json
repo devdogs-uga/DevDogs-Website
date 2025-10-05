@@ -15,6 +15,13 @@
       "when": 1759703640547,
       "tag": "0001_mighty_lilandra",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1759704419872,
+      "tag": "0002_sturdy_talisman",
+      "breakpoints": true
     }
   ]
 }
