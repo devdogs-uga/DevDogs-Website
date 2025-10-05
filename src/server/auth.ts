@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import type { NextRequest } from "next/server";
 import { db } from "~/server/db";
-import { sessions, users } from "~/server/db/schema";
+import { lower, sessions, users } from "~/server/db/schema";
 import { env } from "~/env";
 
 export const googleOAuth2 = new google.auth.OAuth2(
@@ -70,20 +70,24 @@ export async function handleOAuthRedirect(request: NextRequest) {
 
   const token = await db
     .transaction(async (tx) => {
-      const [insertedUser] = await tx
-        .insert(users)
-        .values({
-          email,
-          name: profile.data.name ?? "UGA Student",
-          image: profile.data.picture,
-          type: "user",
-        })
-        .onDuplicateKeyUpdate({
-          set: { id: sql`id` },
-        })
-        .$returningId();
+      const user =
+        (await tx.query.users.findFirst({
+          where: eq(lower(users.email), email.toLowerCase()),
+        })) ??
+        (await tx
+          .insert(users)
+          .values({
+            email,
+            name: profile.data.name ?? "UGA Student",
+            image: profile.data.picture,
+            type: "user",
+          })
+          .onDuplicateKeyUpdate({
+            set: { id: sql`id` },
+          })
+          .$returningId())[0];
 
-      if (!insertedUser) {
+      if (!user) {
         tx.rollback();
         throw new Error("🍸 How did we get here?");
       }
@@ -91,7 +95,7 @@ export async function handleOAuthRedirect(request: NextRequest) {
       const [insertedSession] = await tx
         .insert(sessions)
         .values({
-          userId: insertedUser.id,
+          userId: user.id,
           userAgent: request.headers.get("user-agent"),
         })
         .$returningId();
@@ -103,7 +107,8 @@ export async function handleOAuthRedirect(request: NextRequest) {
 
       return insertedSession.token;
     })
-    .catch(() => {
+    .catch((e) => {
+      console.error(e);
       notFound();
     });
 

@@ -8,6 +8,13 @@
       "when": 1759702602695,
       "tag": "0000_cynical_hobgoblin",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1759703640547,
+      "tag": "0001_mighty_lilandra",
+      "breakpoints": true
     }
   ]
 }
