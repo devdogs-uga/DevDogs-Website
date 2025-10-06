@@ -3,8 +3,50 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+@font-face {
+  font-family: 'Myriad Pro'; 
+  src: url('/fonts/myriad-pro/MYRIADPRO-REGULAR.otf') format('opentype'); 
+  font-weight: normal; 
+  font-style: normal; 
+} 
+
+:root {
+  --background-gradient-dark: linear-gradient(
+    90deg,
+    #1c161c 0%,
+    #331b33 100%
+  );
+  --background-gradient-light: linear-gradient(
+    90deg,
+    #fff7f9 0%,
+    #dccbcb 100%
+  ); 
+  --dark-purple: #331b33; 
+  --snow: #fff7f9; 
+  --punchy-pink: #ff4583; 
+  --storm-gray: #918a91; 
+  --new-blue: #2f9f9b; 
+  --primary-gradient: linear-gradient(to right, #ff4583, #e4002b); 
+  --putty: #dccbcb; 
+  --night: #1c161c; 
+  --stone-gray: #776e6e; 
+} 
+
 @theme {
-  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif,
-    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  --font-brand: var(--font-brand), cursive;
+  --font-sans: var(--font-baru); 
+  --font-display: var(--font-myriad);
+
+  --color-dark-purple: #331b33; 
+  --color-snow: #fff7f9; 
+  --color-punchy-pink: #ff4583; 
+  --color-storm-gray: #918a91; 
+  --color-new-blue: #2f9f9b; 
+  --color-putty: #dccbcb; 
+  --color-night: #1c161c; 
+  --color-stone-gray: #776e6e; 
+}
+
+@theme inline {
+  --font-sans: var(--font-baru); 
+  --font-display: var(--font-myriad);
 }
