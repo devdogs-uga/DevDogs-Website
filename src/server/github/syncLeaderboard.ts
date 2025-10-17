@@ -1,12 +1,11 @@
 import { sql } from "drizzle-orm";
 import { env } from "~/env";
+import isInRange from "~/lib/isBetween";
 import { requestInit } from ".";
 import { db } from "../db";
 import { githubProfiles } from "../db/schema";
 import paginate from "./paginate";
 import * as schema from "./schema";
-import { isBefore } from "date-fns";
-import isInRange from "~/lib/isBetween";
 
 function getProjectFields({ number }: { number: number }) {
   return fetch(
@@ -14,7 +13,7 @@ function getProjectFields({ number }: { number: number }) {
     requestInit,
   )
     .then((res) => res.json())
-    .then(schema.fieldsResults.parseAsync)
+    .then((obj) => schema.fieldsResults.parseAsync(obj))
     .then((fields) => ({ number, fields }));
 }
 
@@ -56,7 +55,9 @@ async function calculatePoints({
   );
 
   for await (const response of pagination) {
-    const issues = await response.json().then(schema.issueResults.parseAsync);
+    const issues = await response
+      .json()
+      .then((obj) => schema.issueResults.parseAsync(obj));
 
     for (const { content, fields } of issues) {
       const points =
@@ -79,18 +80,16 @@ async function calculatePoints({
                 : 0),
             2024:
               (existingEntry?.points[2024] ?? 0) +
-              (isInRange([
-                env.AY2023_POINTS_CUTOFF,
-                env.AY2024_POINTS_CUTOFF],
+              (isInRange(
+                [env.AY2023_POINTS_CUTOFF, env.AY2024_POINTS_CUTOFF],
                 content.closed_at,
               )
                 ? points
                 : 0),
             2025:
               (existingEntry?.points[2025] ?? 0) +
-              (isInRange([
-                env.AY2024_POINTS_CUTOFF,
-                env.AY2025_POINTS_CUTOFF],
+              (isInRange(
+                [env.AY2024_POINTS_CUTOFF, env.AY2025_POINTS_CUTOFF],
                 content.closed_at,
               )
                 ? points
@@ -130,7 +129,7 @@ export default function syncLeaderboard() {
     requestInit,
   )
     .then((res) => res.json())
-    .then(schema.projectResults.parseAsync)
+    .then((obj) => schema.projectResults.parseAsync(obj))
     .then((projects) => Promise.allSettled(projects.map(getProjectFields)))
     .then((results) =>
       Promise.allSettled(

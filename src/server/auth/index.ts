@@ -42,8 +42,14 @@ export async function getSessionUser<
 const redirect_uri = new URL("/api/auth", env.BASE_URL).toString();
 const response_type = "code";
 
+/**
+ * Redirects the user to the appropriate OAuth consent URL.
+ * @param realm The authentication provider
+ * @param callbackPath Where to redirect the user after the authentication flow is complete (defaults to `/`)
+ * @see https://medium.com/codenx/oauth-2-0-4cddd6c7471f
+ */
 export async function authenticate(
-  realm: "google" | "discord" | "github",
+  realm: "uga" | "discord" | "github",
   callbackPath?: string,
 ) {
   const [insertedState] = await db
@@ -111,6 +117,20 @@ const searchParamsSchema = z
 
 const grant_type = "authorization_code";
 
+/**
+ * Next.js Route handler for an OAuth callback request.
+ * @param request The incoming request object, which expects two of three valid search parameters shown below.
+ *
+ * **Required always:**
+ * - `state` &mdash; The token identifying the current state of the authentication flow.
+ *
+ * **Requires exactly one of:**
+ * - `code` &mdash; During the standard OAuth flow, this value allows for retrieval of a user's `access_token`. The `access_token` will then be used to request profile information about the authenticated user, which will then be inserted into the database. If this is the user's first time signing in and they are using a realm other than `uga`, they will be redirected to authenticate with `uga` first. This second authentication request will use `/api/auth?state=...&linkProfile=...` as the callback path.
+ * - `linkProfile` &mdash; After a standard OAuth flow, this value allows for a user's non-`uga` profile to be linked to their newly created account.
+ *
+ * @returns never, when awaited (a `redirect()`, `notFound()`, or `unauthorized()` error will always be thrown)
+ * @see https://medium.com/codenx/oauth-2-0-4cddd6c7471f
+ */
 export async function handleOAuthRedirect(request: NextRequest) {
   const cookieStore = await cookies();
   const params = await searchParamsSchema
@@ -120,7 +140,9 @@ export async function handleOAuthRedirect(request: NextRequest) {
   const provider = providers[params.state.realm];
 
   if ("linkProfile" in params) {
-    if (provider.name === "google") {
+    // [Case 2] A user tried to sign in for the first time using a non-`uga` account. They've completed creaeting the UGA account, but we want to automatically link their non-`uga` profile to the `uga` user.
+
+    if (provider.name === "uga") {
       notFound();
     }
 
@@ -137,6 +159,7 @@ export async function handleOAuthRedirect(request: NextRequest) {
     redirect(params.state.callbackPath);
   }
 
+  // [Case 1] A user is following the standard OAuth flow. We request the `access_token` from the provider and get the associated profile data.
   const tokens = await fetch(provider.tokensRequest.url, {
     method: "POST",
     headers: {
@@ -154,6 +177,7 @@ export async function handleOAuthRedirect(request: NextRequest) {
     .then((res) => res.json())
     .then((obj) => tokenResultSchema.parseAsync(obj));
 
+  // We wait to parse the data so TypeScript can appropriately infer types.
   const profileData: unknown = await fetch(provider.profileRequest.url, {
     headers: {
       Accept: "application/json",
@@ -161,7 +185,9 @@ export async function handleOAuthRedirect(request: NextRequest) {
     },
   }).then((res) => res.json());
 
-  if (provider.name === "google") {
+  if (provider.name === "uga") {
+    // [Case 1-1] The user is signing in with their `uga` account.
+
     const profile =
       await provider.profileRequest.validator.parseAsync(profileData);
 
@@ -172,6 +198,7 @@ export async function handleOAuthRedirect(request: NextRequest) {
             where: eq(users.email, profile.email),
             columns: { id: true },
           })) ??
+          // Case [1-1-1] The user does not already exist: insert them and return their ID.
           (await tx.insert(provider.table).values(profile).$returningId())[0];
 
         if (!user) {
@@ -204,6 +231,8 @@ export async function handleOAuthRedirect(request: NextRequest) {
     redirect(params.state.callbackPath);
   }
 
+  // [Case 1-2] The user is signing in with their non-`uga` account.
+
   const profile =
     await provider.profileRequest.validator.parseAsync(profileData);
   const sessionToken = cookieStore.get("session")?.value;
@@ -219,6 +248,7 @@ export async function handleOAuthRedirect(request: NextRequest) {
 
       const user =
         session?.user ??
+        // Case [1-2-1] The user does not currently have a session: find them using the linked profile ID.
         (await tx.query.users.findFirst({
           where: eq(users[provider.userRelationColumnName], profile.id),
         }));
@@ -234,6 +264,7 @@ export async function handleOAuthRedirect(request: NextRequest) {
         });
 
       if (!user) {
+        // Case [1-2-2] The user is signing in for the first time using a non-`uga` account: we can't create a session for them (yet) because there is no `user` to associate this profile with.
         return null;
       }
 
@@ -269,8 +300,9 @@ export async function handleOAuthRedirect(request: NextRequest) {
     });
 
   if (token === null) {
+    // Continued: [Case 1-2-2] Begin the authenticaiton flow using `uga`. See [Case 2].
     return await authenticate(
-      "google",
+      "uga",
       request.nextUrl.pathname +
         "?" +
         new URLSearchParams({

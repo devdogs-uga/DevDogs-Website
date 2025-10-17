@@ -16,6 +16,12 @@ const callbackPathSchema = z.string().transform((path, ctx) => {
   }
 });
 
+/**
+ * Extracts a callback path from either the `callbackPath` field in `formData` or the `referer` field in the incoming request headers.
+ * @param fallback Used if `callbackPath` is not present in `formData` or `referer` is not present in `headers()`.
+ * @param formData A `FormData` obect.
+ * @returns The extracted callback path.
+ */
 export async function getCallbackPath(
   fallback: string,
   formData?: FormData,

@@ -114,7 +114,7 @@ export const oauthStates = mysqlTable("oauth_states", (d) => ({
         "base64",
       ),
     ),
-  realm: d.mysqlEnum(["google", "discord", "github"]).notNull(),
+  realm: d.mysqlEnum(["uga", "discord", "github"]).notNull(),
   callbackPath: d.text().notNull().default("/"),
   createdAt: d.timestamp().defaultNow().notNull(),
 }));
