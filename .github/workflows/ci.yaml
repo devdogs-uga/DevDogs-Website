@@ -36,5 +36,5 @@ jobs:
       - name: Deploy Project
         if: ${{ github.event_name == 'push' }}
         run: |
-          pnpm db:migrate
+          pnpm db:migrate --auto-approve
           pnpm vercel deploy ${{ (env.REF == 'main' && '--prod') || ' ' }} --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
