@@ -39,9 +39,6 @@ export async function getSessionUser<
   return session ?? null;
 }
 
-const redirect_uri = new URL("/api/auth", env.BASE_URL).toString();
-const response_type = "code";
-
 /**
  * Redirects the user to the appropriate OAuth consent URL.
  * @param realm The authentication provider
@@ -70,8 +67,8 @@ export async function authenticate(
       "?" +
       new URLSearchParams({
         client_id: provider.clientId,
-        redirect_uri,
-        response_type,
+        redirect_uri: new URL("/api/auth", env.BASE_URL).toString(),
+        response_type: "code",
         state: insertedState.token,
         ...provider.consentRequest.params,
       }).toString(),
@@ -114,8 +111,6 @@ const searchParamsSchema = z
       ]),
     ),
   );
-
-const grant_type = "authorization_code";
 
 /**
  * Next.js Route handler for an OAuth callback request.
@@ -170,8 +165,8 @@ export async function handleOAuthRedirect(request: NextRequest) {
       client_id: provider.clientId,
       client_secret: provider.clientSecret,
       code: params.code,
-      grant_type,
-      redirect_uri,
+      grant_type: "authorization_code",
+      redirect_uri: new URL("/api/auth", env.BASE_URL).toString(),
     }).toString(),
   })
     .then((res) => res.json())
