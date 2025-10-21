@@ -13,11 +13,11 @@ export const env = createEnv({
     AUTH_GOOGLE_ID: z.string(),
     AUTH_GOOGLE_SECRET: z.string(),
     BASE_URL:
-      process.env.VERCEL_ENV === "production"
+      process.env.VERCEL_ENV && process.env.VERCEL_ENV !== "development"
         ? z
             .string()
             .transform((str) => "https://" + str)
-            //.pipe(z.url())
+            .pipe(z.url())
             .optional()
         : z.url().default("http://localhost:3000"),
     AY2025_POINTS_CUTOFF: z
