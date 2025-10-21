@@ -17,7 +17,7 @@ export const env = createEnv({
         ? z
             .string()
             .transform((str) => "https://" + str)
-            .pipe(z.url())
+            //.pipe(z.url())
             .optional()
         : z.url().default("http://localhost:3000"),
     AY2025_POINTS_CUTOFF: z
