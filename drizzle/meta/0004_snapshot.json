@@ -56,9 +56,7 @@
       "indexes": {
         "login_idx": {
           "name": "login_idx",
-          "columns": [
-            "(lower(`login`))"
-          ],
+          "columns": ["(lower(`login`))"],
           "isUnique": true
         }
       },
@@ -66,9 +64,7 @@
       "compositePrimaryKeys": {
         "github_profile_id": {
           "name": "github_profile_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -113,12 +109,8 @@
           "name": "session_userId_user_id_fk",
           "tableFrom": "session",
           "tableTo": "user",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -126,9 +118,7 @@
       "compositePrimaryKeys": {
         "session_token": {
           "name": "session_token",
-          "columns": [
-            "token"
-          ]
+          "columns": ["token"]
         }
       },
       "uniqueConstraints": {},
@@ -199,9 +189,7 @@
       "indexes": {
         "email_idx": {
           "name": "email_idx",
-          "columns": [
-            "(lower(`email`))"
-          ],
+          "columns": ["(lower(`email`))"],
           "isUnique": true
         }
       },
@@ -210,12 +198,8 @@
           "name": "user_githubId_github_profile_id_fk",
           "tableFrom": "user",
           "tableTo": "github_profile",
-          "columnsFrom": [
-            "githubId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["githubId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -223,9 +207,7 @@
       "compositePrimaryKeys": {
         "user_id": {
           "name": "user_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},

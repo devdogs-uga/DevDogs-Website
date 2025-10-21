@@ -3,7 +3,7 @@ import {
   type APIInteractionResponseChannelMessageWithSource,
   InteractionResponseType,
   InteractionType,
-  type RESTPostAPIApplicationCommandsJSONBody
+  type RESTPostAPIApplicationCommandsJSONBody,
 } from "discord-api-types/v10";
 import { verifyKey } from "discord-interactions";
 import { type NextRequest, NextResponse } from "next/server";

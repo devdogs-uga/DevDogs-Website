@@ -1,2 +1,2 @@
 onlyBuiltDependencies:
-  - '@discord-interactions/core'
+  - "@discord-interactions/core"

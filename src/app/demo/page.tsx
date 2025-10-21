@@ -48,10 +48,14 @@ export default async function HomePage() {
             <button type="submit">Sign In with Google</button>
           </form>
           <form action={signIn} className="contents">
-            <button name="realm" value="discord" type="submit">Sign In with Discord</button>
+            <button name="realm" value="discord" type="submit">
+              Sign In with Discord
+            </button>
           </form>
           <form action={signIn} className="contents">
-            <button name="realm" value="github" type="submit">Sign In with Github</button>
+            <button name="realm" value="github" type="submit">
+              Sign In with Github
+            </button>
           </form>
         </>
       )}

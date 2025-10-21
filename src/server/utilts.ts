@@ -22,14 +22,9 @@ const callbackPathSchema = z.string().transform((path, ctx) => {
  * @param formData A `FormData` obect.
  * @returns The extracted callback path.
  */
-export async function getCallbackPath(
-  fallback: string,
-  formData?: FormData,
-) {
+export async function getCallbackPath(fallback: string, formData?: FormData) {
   const referer = (await headers()).get("referer");
   return await callbackPathSchema
     .parseAsync(formData?.get("callbackPath"))
-    .catch(() =>
-      callbackPathSchema.parseAsync(referer).catch(() => fallback),
-    );
+    .catch(() => callbackPathSchema.parseAsync(referer).catch(() => fallback));
 }
