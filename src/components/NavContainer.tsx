@@ -26,7 +26,7 @@ export default function NavContainer({ children }: PropsWithChildren) {
   }, [handleScroll]);
   return (
     <nav
-      className="fixed top-0 left-0 w-full transition-[background-color,box-shadow,backdrop-filter] data-float:bg-black/30 data-float:shadow-xl data-float:backdrop-blur-sm"
+      className="fixed top-0 left-0 w-full transition-[background-color,box-shadow,backdrop-filter] data-float:bg-black/30 data-float:shadow-xl data-float:backdrop-blur-sm z-50"
       data-float={isFloating || undefined}
     >
       {children}

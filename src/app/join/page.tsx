@@ -19,14 +19,14 @@ interface Props extends PropsWithChildren {
 function OnboardingStep({ complete, children, heading }: Props) {
   return (
     <section
-      className="pointer-events-none flex w-full scale-95 flex-col gap-6 rounded-md border border-zinc-800 bg-zinc-900 p-4 opacity-75 inset-shadow-sm first-of-type:not-data-complete:pointer-events-auto first-of-type:not-data-complete:scale-100 first-of-type:not-data-complete:opacity-100 [[data-complete]_+:not([data-complete])]:pointer-events-auto [[data-complete]_+:not([data-complete])]:scale-100 [[data-complete]_+:not([data-complete])]:opacity-100"
+      className="pointer-events-none flex w-full scale-95 flex-col gap-4 sm:gap-6 rounded-md border border-zinc-800 bg-zinc-900 py-4 px-3 sm:px-4 opacity-75 inset-shadow-sm first-of-type:not-data-complete:pointer-events-auto first-of-type:not-data-complete:scale-100 first-of-type:not-data-complete:opacity-100 [[data-complete]_+:not([data-complete])]:pointer-events-auto [[data-complete]_+:not([data-complete])]:scale-100 [[data-complete]_+:not([data-complete])]:opacity-100"
       data-complete={complete || undefined}
     >
       <h3 className="relative flex flex-col gap-1.5">
-        <span className="w-max rounded-sm bg-rose-400 px-1.5 text-sm font-extrabold text-rose-950 uppercase after:content-[counter(step)] after:[counter-increment:step]">
+        <span className="w-max rounded-sm bg-rose-400 px-1.5 text-xs sm:text-sm font-extrabold text-rose-950 uppercase after:content-[counter(step)] after:[counter-increment:step]">
           Step&nbsp;
         </span>
-        <span className="text-2xl font-bold">{heading}</span>
+        <span className="text-xl sm:text-2xl font-bold">{heading}</span>
 
         {complete && (
           <span className="absolute top-1/2 right-0 -translate-y-1/2 text-5xl text-emerald-500">
@@ -54,15 +54,15 @@ export default async function Join() {
   }
 
   return (
-    <main className="mx-auto mt-18.5 flex w-full max-w-2xl flex-col gap-6 py-12 [counter-reset:step_0]">
+    <main className="mx-auto mt-18.5 flex w-full max-w-2xl flex-col py-8 gap-4 sm:gap-6 sm:py-12 [counter-reset:step_0] px-3">
       <header className="pb-10 text-center">
-        <h2 className="pb-4 text-4xl font-bold">
+        <h2 className="pb-4 text-3xl sm:text-4xl font-bold">
           Hi there,{" "}
           <span className="text-rose-500">
             {session.user.publicProfile.name}
           </span>
         </h2>
-        <p className="mx-auto max-w-prose text-xl font-medium text-zinc-400">
+        <p className="mx-auto max-w-sm sm:max-w-prose text-lg sm:text-xl font-medium text-zinc-400">
           <span className="inline-block">Thanks for joining DevDogs!</span>{" "}
           <span className="inline-block">Let&rsquo;s get you set up...</span>
         </p>
@@ -76,7 +76,7 @@ export default async function Join() {
         }
         complete={githubStepComplete}
       >
-        <p className="max-w-prose text-zinc-300">
+        <p className="max-w-prose text-zinc-300 sm:text-base text-sm sm:block flex gap-2 flex-col">
           <span className="inline-block">
             DevDogs uses GitHub to manage source code and organize
             contributions.
@@ -117,7 +117,7 @@ export default async function Join() {
         }
         complete={discordStepComplete}
       >
-        <p className="max-w-prose text-zinc-300">
+        <p className="max-w-prose text-zinc-300 sm:text-base text-sm sm:block flex gap-2 flex-col">
           <span className="inline-block">
             DevDogs uses Discord for communicating with members.
           </span>
@@ -164,7 +164,7 @@ export default async function Join() {
         }
         complete={profileStepComplete}
       >
-        <p className="max-w-prose text-zinc-300">
+        <p className="max-w-prose text-zinc-300 sm:text-base text-sm sm:block flex gap-2 flex-col">
           <span className="inline-block">
             DevDogs projects are resume- and portfolio-builders.
           </span>
