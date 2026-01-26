@@ -1,5 +1,6 @@
 "use client";
 
+import * as Dialog from "@radix-ui/react-dialog";
 import Link from "next/link";
 import type { PropsWithChildren } from "react";
 import {
@@ -11,8 +12,6 @@ import {
   PiUserBold,
 } from "react-icons/pi";
 import signOut from "~/server/actions/signOut";
-import * as Dialog from "@radix-ui/react-dialog";
-import { usePathname } from "next/navigation";
 
 interface NavLinkProps extends PropsWithChildren {
   href: string;

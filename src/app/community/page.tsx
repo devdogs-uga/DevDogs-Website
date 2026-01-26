@@ -15,7 +15,7 @@ export default async function Community() {
   return (
     <>
       <section className="py-32">hero</section>
-      <hr className="mx-auto w-[calc(100vh-4rem)] max-w-4xl rounded-full border-zinc-700" />
+      <hr className="mx-auto w-[calc(100vw-4rem)] max-w-4xl rounded-full border-zinc-700" />
       <section className="px-4 py-12">
         <h2 className="text-center text-4xl font-bold">
           Contributions Leaderboard
