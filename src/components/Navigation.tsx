@@ -64,10 +64,22 @@ function NavigationItems() {
   );
 }
 
-function MobileNavigation() {
+interface MobileNavigationProps {
+  isSignedIn: boolean;
+}
+
+function MobileNavigation({ isSignedIn }: MobileNavigationProps) {
   return (
-    <div className="-mx-2 flex flex-col gap-1.5 self-start text-lg">
+    <div className="flex w-full flex-col items-start gap-1.5 self-start text-lg">
       <NavigationItems />
+      {!isSignedIn && (
+        <LinkButton
+          href="/join"
+          className="mt-4.5 flex w-full items-center justify-center gap-5 rounded-sm bg-rose-900 py-1.5 font-extrabold tracking-wide text-white ring-rose-900 hover:bg-rose-200 hover:text-rose-900"
+        >
+          Join DevDogs!
+        </LinkButton>
+      )}
     </div>
   );
 }
@@ -90,13 +102,13 @@ function LinkInBio() {
       <div className="flex w-full flex-col gap-3">
         <LinkButton
           href="/join"
-          className="flex items-center justify-center font-extrabold tracking-wide gap-5 rounded-sm bg-rose-900 px-12 py-3 text-xl text-white ring-rose-900 hover:bg-rose-200 hover:text-rose-900"
+          className="flex items-center justify-center gap-5 rounded-sm bg-rose-900 px-12 py-3 text-xl font-extrabold tracking-wide text-white ring-rose-900 hover:bg-rose-200 hover:text-rose-900"
         >
           Join DevDogs!
         </LinkButton>
         <Link
           href="?"
-          className="flex items-center justify-center font-medium gap-2 rounded-sm bg-rose-300 px-4 py-2 text-black hover:underline"
+          className="flex items-center justify-center gap-2 rounded-sm bg-rose-300 px-4 py-2 font-medium text-black hover:underline"
         >
           Continue to Website
           <PiArrowRightBold />
@@ -110,7 +122,9 @@ function LinkInBio() {
           className="flex items-center justify-between gap-2 rounded-sm bg-rose-200 px-4 py-2 text-black hover:underline"
         >
           <PiLink />
-          <span className="w-full text-center">UGA Involvement Network Listing</span>
+          <span className="w-full text-center">
+            UGA Involvement Network Listing
+          </span>
           <Share>
             <button className="-m-1 rounded-full p-1 transition-colors hover:bg-rose-300">
               <PiDotsThreeVertical />
@@ -217,7 +231,7 @@ export default async function Navigation() {
           </div>
 
           <div className="flex justify-end gap-3">
-            <Collapsible.Trigger className="group grid grid-cols-1 grid-rows-1 rounded-sm px-1.5 py-1 text-2xl text-zinc-200 transition-colors group-data-from-link-in-bio:hidden hover:bg-rose-950 hover:text-white md:hidden md:text-3xl">
+            <Collapsible.Trigger className="group grid grid-cols-1 grid-rows-1 items-center rounded-sm px-1.5 py-1 text-2xl text-zinc-200 transition-colors group-data-from-link-in-bio:hidden hover:bg-rose-950 hover:text-white md:hidden md:text-3xl">
               <PiDotsNineBold className="col-start-1 row-start-1 transition-opacity group-data-[state=open]:opacity-0" />
               <PiXBold className="col-start-1 row-start-1 opacity-0 transition-opacity group-data-[state=open]:opacity-100" />
             </Collapsible.Trigger>
@@ -282,13 +296,13 @@ export default async function Navigation() {
           </div>
         </div>
 
-        <Collapsible.Content className="group-data-[state=open]:animate-collapsible-open group-data-[state=closed]:animate-collapsible-closed overflow-hidden border-rose-600 group-data-from-link-in-bio:border-none group-data-from-link-in-bio:flex-1 flex items-center border-b-2">
-          <div className="flex items-center px-4 pb-5 group-data-from-link-in-bio:pb-0 group-data-from-link-in-bio:mb-19">
+        <Collapsible.Content className="group-data-[state=open]:animate-collapsible-open group-data-[state=closed]:animate-collapsible-closed flex items-center overflow-hidden border-b-2 border-rose-600 group-data-from-link-in-bio:flex-1 group-data-from-link-in-bio:border-none">
+          <div className="flex w-full items-center px-4 pb-5 group-data-from-link-in-bio:mb-19 group-data-from-link-in-bio:pb-0">
             <div className="hidden group-data-from-link-in-bio:contents">
               <LinkInBio />
             </div>
             <div className="contents group-data-from-link-in-bio:hidden">
-              <MobileNavigation />
+              <MobileNavigation isSignedIn={session !== null} />
             </div>
           </div>
         </Collapsible.Content>
