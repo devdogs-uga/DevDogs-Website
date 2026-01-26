@@ -54,7 +54,7 @@ export default async function Join() {
   }
 
   return (
-    <main className="mx-auto mt-18.5 flex w-full max-w-2xl flex-col py-8 gap-4 sm:gap-6 sm:py-12 [counter-reset:step_0] px-3">
+    <main className="mx-auto mt-18.75 flex w-full max-w-2xl flex-col py-8 gap-4 sm:gap-6 sm:py-12 [counter-reset:step_0] px-3">
       <header className="pb-10 text-center">
         <h2 className="pb-4 text-3xl sm:text-4xl font-bold">
           Hi there,{" "}

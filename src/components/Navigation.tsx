@@ -215,7 +215,7 @@ export default async function Navigation() {
 
   return (
     <NavContainer>
-      <nav className="fixed top-0 left-0 z-50 flex w-full flex-col from-rose-950/20 to-black/30 pt-0.5 transition-[background-color,box-shadow,backdrop-filter] group-data-from-link-in-bio:h-dvh group-data-scrolled:bg-black/30 group-data-scrolled:shadow-xl group-data-scrolled:backdrop-blur-sm group-data-[state=open]:border-rose-600 group-data-[state=open]:bg-radial group-data-[state=open]:backdrop-blur-sm">
+      <nav className="fixed top-0 left-0 z-60 flex w-full flex-col from-rose-950/20 to-black/30 pt-0.75 transition-[background-color,box-shadow,backdrop-filter] group-data-from-link-in-bio:h-dvh group-data-scrolled:bg-black/30 group-data-scrolled:shadow-xl group-data-scrolled:backdrop-blur-sm group-data-[state=open]:border-rose-600 group-data-[state=open]:bg-radial group-data-[state=open]:backdrop-blur-sm">
         <div className="mx-auto flex w-full max-w-360 grid-cols-[1fr_max-content_1fr] items-center justify-between px-4 py-5 md:grid md:px-6">
           <Link href="/">
             <h1 className="flex items-center gap-2 text-xl font-bold md:text-2xl lg:gap-2.5 lg:text-3xl">
@@ -230,16 +230,11 @@ export default async function Navigation() {
             <NavigationItems />
           </div>
 
-          <div className="flex justify-end gap-3">
-            <Collapsible.Trigger className="group grid grid-cols-1 grid-rows-1 items-center rounded-sm px-1.5 py-1 text-2xl text-zinc-200 transition-colors group-data-from-link-in-bio:hidden hover:bg-rose-950 hover:text-white md:hidden md:text-3xl">
-              <PiDotsNineBold className="col-start-1 row-start-1 transition-opacity group-data-[state=open]:opacity-0" />
-              <PiXBold className="col-start-1 row-start-1 opacity-0 transition-opacity group-data-[state=open]:opacity-100" />
-            </Collapsible.Trigger>
-
+          <div className="flex items-center justify-end gap-3">
             {session ? (
               <>
                 {!session.user.github && (
-                  <form className="hidden md:contents" action={signIn}>
+                  <form className="contents" action={signIn}>
                     <input
                       className="hidden"
                       type="hidden"
@@ -247,7 +242,7 @@ export default async function Navigation() {
                       value="github"
                     />
                     <button
-                      className="flex items-center gap-2 rounded-sm border border-rose-800 bg-rose-950/50 px-2 py-0.5 text-sm transition-colors hover:bg-rose-950"
+                      className="flex items-center gap-2 rounded-md border border-rose-800 bg-rose-950/50 px-2 py-1 text-xs lg:text-sm transition-colors hover:bg-rose-950"
                       type="submit"
                     >
                       <PiLink />
@@ -256,10 +251,10 @@ export default async function Navigation() {
                   </form>
                 )}
 
-                <p className="relative flex items-center gap-3 self-end rounded-full border-rose-950 bg-rose-950/50 text-4xl/0 md:border">
+                <p className="relative flex items-center gap-3 rounded-full border-rose-950 bg-rose-950/50 md:border">
                   {session.user.github && (
                     <Link
-                      className="ml-4.5 hidden items-center gap-3 text-[0.9rem]/none font-bold md:flex"
+                      className="ml-4.5 flex items-center gap-3 text-[0.9rem]/none font-bold"
                       href="/community#leaderboard"
                     >
                       {session.user.github && (
@@ -279,7 +274,10 @@ export default async function Navigation() {
                       </span>
                     </Link>
                   )}
-                  <Link className="" href="/settings/profile">
+                  <Link
+                    className="text-3xl/0 md:text-4xl/0"
+                    href="/settings/profile"
+                  >
                     <Avatar {...session.user} />
                   </Link>
                 </p>
@@ -293,11 +291,16 @@ export default async function Navigation() {
                 <PiArrowRightBold />
               </Link>
             )}
+            
+            <Collapsible.Trigger className="group grid grid-cols-1 grid-rows-1 items-center rounded-sm -mx-1.5 px-1.5 py-1 text-2xl text-zinc-200 transition-colors group-data-from-link-in-bio:hidden hover:bg-rose-950 hover:text-white md:hidden md:text-3xl">
+              <PiDotsNineBold className="col-start-1 row-start-1 transition-opacity group-data-[state=open]:opacity-0" />
+              <PiXBold className="col-start-1 row-start-1 opacity-0 transition-opacity group-data-[state=open]:opacity-100" />
+            </Collapsible.Trigger>
           </div>
         </div>
 
         <Collapsible.Content className="group-data-[state=open]:animate-collapsible-open group-data-[state=closed]:animate-collapsible-closed flex items-center overflow-hidden border-b-2 border-rose-600 group-data-from-link-in-bio:flex-1 group-data-from-link-in-bio:border-none">
-          <div className="flex w-full items-center px-4 pb-5 group-data-from-link-in-bio:mb-19 group-data-from-link-in-bio:pb-0">
+          <div className="flex w-full items-center px-4 pb-5 group-data-from-link-in-bio:pb-0">
             <div className="hidden group-data-from-link-in-bio:contents">
               <LinkInBio />
             </div>

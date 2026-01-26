@@ -133,7 +133,7 @@ export default async function Settings() {
 
             <p className="max-w-prose text-zinc-300">
               <span className="inline-block">
-                This name will be displayed publicly.
+                This will be displayed publicly.
               </span>{" "}
               <span className="inline-block">
                 We recommend using your full name.
@@ -151,7 +151,7 @@ export default async function Settings() {
               required
             />
           </div>
-          <div className="flex items-center justify-between border-t border-zinc-800 bg-black p-4 font-medium">
+          <div className="flex items-center justify-between border-t border-zinc-800 bg-black p-4 gap-4 font-medium">
             <p className="max-w-prose text-sm text-zinc-400">
               Please use 32 characters at maximum.
             </p>
@@ -178,7 +178,7 @@ export default async function Settings() {
               type="email"
             />
           </div>
-          <div className="flex items-center justify-between border-t border-zinc-800 bg-black p-4 font-medium">
+          <div className="flex items-center justify-between border-t border-zinc-800 bg-black p-4 gap-4 font-medium">
             <p className="max-w-prose text-sm text-zinc-400">
               Please use an email you check regularly.
             </p>
@@ -204,7 +204,7 @@ export default async function Settings() {
               type="url"
             />
           </div>
-          <div className="flex items-center justify-between border-t border-zinc-800 bg-black p-4 font-medium">
+          <div className="flex items-center justify-between border-t border-zinc-800 bg-black p-4 gap-4 font-medium">
             <p className="max-w-prose text-sm text-zinc-400">
               Alternatively, use a download link for your resume.
             </p>
@@ -264,7 +264,7 @@ export default async function Settings() {
               type="text"
             />
           </div>
-          <div className="flex items-center justify-between border-t border-zinc-800 bg-black p-4 font-medium">
+          <div className="flex items-center justify-between border-t border-zinc-800 bg-black p-4 gap-4 font-medium">
             <p className="max-w-prose text-sm text-zinc-400">
               Remember, these will be shared publicly.
             </p>

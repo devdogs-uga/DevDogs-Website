@@ -91,7 +91,7 @@ export default function SettingsNavigation({
 }: Props) {
   return (
     <Dialog.Root>
-      <header className="sticky top-19 z-50 mt-18.5 flex items-center justify-between border-y border-zinc-800 bg-black/30 px-3 md:px-4 py-5 sm:py-6 text-xl/none shadow-xl backdrop-blur-sm sm:px-6 md:block md:bg-black md:py-10 md:shadow-none">
+      <header className="sticky top-18.75 z-50 mt-18.75 flex items-center justify-between border-y border-zinc-800 bg-black/30 px-3 md:px-4 py-5 sm:py-6 text-xl/none shadow-xl backdrop-blur-sm sm:px-6 md:block md:bg-black md:py-10 md:shadow-none">
         <h2 className="flex cursor-default items-center gap-1.5 font-semibold text-zinc-500 sm:text-2xl/none md:text-3xl">
           Settings <PiLineVerticalBold className="rotate-24" />{" "}
           <span className="text-white">{title}</span>
@@ -111,8 +111,8 @@ export default function SettingsNavigation({
       </main>
 
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 h-screen w-screen bg-black/40 opacity-100 transition-opacity duration-75 starting:opacity-0" />
-        <Dialog.Content className="fixed bottom-0 left-0 z-50 w-screen translate-y-0 rounded-t-lg bg-black px-3 py-6 shadow-xl transition-transform duration-100 starting:translate-y-full">
+        <Dialog.Overlay className="fixed inset-0 z-70 h-screen w-screen bg-black/40 opacity-100 transition-opacity duration-75 starting:opacity-0" />
+        <Dialog.Content className="fixed bottom-0 left-0 z-70 w-screen translate-y-0 rounded-t-lg bg-black px-3 py-6 shadow-xl transition-transform duration-100 starting:translate-y-full">
           <Dialog.Title className="sr-only">Settings Navigation</Dialog.Title>
 
           <NavContent pathname={pathname} />
