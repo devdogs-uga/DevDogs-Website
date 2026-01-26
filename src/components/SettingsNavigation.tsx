@@ -91,7 +91,7 @@ export default function SettingsNavigation({
 }: Props) {
   return (
     <Dialog.Root>
-      <header className="sticky top-18.75 z-50 mt-18.75 flex items-center justify-between border-y border-zinc-800 bg-black/30 px-3 md:px-4 py-5 sm:py-6 text-xl/none shadow-xl backdrop-blur-sm sm:px-6 md:block md:bg-black md:py-10 md:shadow-none">
+      <header className="sticky top-18 md:top-20 z-50 mt-17.25 top:mt-19.25 flex items-center justify-between border-y border-zinc-800 bg-black/30 px-3.5 md:px-4 py-5 sm:py-6 text-xl/none shadow-xl backdrop-blur-sm sm:px-6 md:block md:py-10 md:shadow-none">
         <h2 className="flex cursor-default items-center gap-1.5 font-semibold text-zinc-500 sm:text-2xl/none md:text-3xl">
           Settings <PiLineVerticalBold className="rotate-24" />{" "}
           <span className="text-white">{title}</span>

@@ -209,16 +209,16 @@ function LinkInBio() {
 export default async function Navigation() {
   const session = await getSession({
     user: {
-      with: { github: true },
+      with: { github: true, publicProfile: true },
     },
   });
 
   return (
     <NavContainer>
-      <nav className="fixed top-0 left-0 z-60 flex w-full flex-col from-rose-950/20 to-black/30 pt-0.75 transition-[background-color,box-shadow,backdrop-filter] group-data-from-link-in-bio:h-dvh group-data-scrolled:bg-black/30 group-data-scrolled:shadow-xl group-data-scrolled:backdrop-blur-sm group-data-[state=open]:border-rose-600 group-data-[state=open]:bg-radial group-data-[state=open]:backdrop-blur-sm">
-        <div className="mx-auto flex w-full max-w-360 grid-cols-[1fr_max-content_1fr] items-center justify-between px-4 py-5 md:grid md:px-6">
+      <nav className="fixed top-0 left-0 z-60 flex w-full flex-col from-rose-950/20 to-black/30 py-0.75 transition-[background-color,box-shadow,backdrop-filter] group-data-from-link-in-bio:h-dvh group-data-scrolled:bg-black/30 group-data-scrolled:shadow-xl group-data-scrolled:backdrop-blur-sm group-data-[state=open]:border-rose-600 group-data-[state=open]:bg-radial group-data-[state=open]:backdrop-blur-sm">
+        <div className="mx-auto flex w-full max-w-360 grid-cols-[1fr_max-content_1fr] items-center justify-between px-4 py-4.25 md:py-4.5 md:grid md:px-6">
           <Link href="/">
-            <h1 className="flex items-center gap-2 text-xl font-bold md:text-2xl lg:gap-2.5 lg:text-3xl">
+            <h1 className="flex items-center gap-2 text-xl font-bold md:text-2xl lg:gap-2.5">
               <figure className="size-[1.5em]">
                 <Image alt="Home" src={devdog} />
               </figure>
@@ -251,7 +251,7 @@ export default async function Navigation() {
                   </form>
                 )}
 
-                <p className="relative flex items-center gap-3 rounded-full border-rose-950 bg-rose-950/50 md:border">
+                <p className="relative flex items-center gap-3 rounded-full border-rose-950 bg-rose-950/50 border">
                   {session.user.github && (
                     <Link
                       className="ml-4.5 flex items-center gap-3 text-[0.9rem]/none font-bold"
@@ -278,7 +278,7 @@ export default async function Navigation() {
                     className="text-3xl/0 md:text-4xl/0"
                     href="/settings/profile"
                   >
-                    <Avatar {...session.user} />
+                    <Avatar {...session.user.publicProfile} />
                   </Link>
                 </p>
               </>
@@ -299,7 +299,7 @@ export default async function Navigation() {
           </div>
         </div>
 
-        <Collapsible.Content className="group-data-[state=open]:animate-collapsible-open group-data-[state=closed]:animate-collapsible-closed flex items-center overflow-hidden border-b-2 border-rose-600 group-data-from-link-in-bio:flex-1 group-data-from-link-in-bio:border-none">
+        <Collapsible.Content className="group-data-[state=open]:animate-collapsible-open group-data-[state=closed]:animate-collapsible-closed flex items-center overflow-hidden border-b border-rose-700 group-data-from-link-in-bio:flex-1 group-data-from-link-in-bio:border-none">
           <div className="flex w-full items-center px-4 pb-5 group-data-from-link-in-bio:pb-0">
             <div className="hidden group-data-from-link-in-bio:contents">
               <LinkInBio />
