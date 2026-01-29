@@ -250,7 +250,7 @@ export default async function Navigation() {
                       className="ml-4.5 flex items-center gap-3 text-[0.9rem]/none font-bold"
                       href="/community#leaderboard"
                     >
-                      {session.user.github && (
+                      {session.user.github.ranking && (
                         <span className="text-rose-400">
                           #{session.user.github.ranking}
                         </span>
