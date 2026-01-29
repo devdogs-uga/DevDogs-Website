@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { env } from "~/env";
 import syncLeaderboard from "~/server/github/syncLeaderboard";
 
+export const maxDuration = 30;
+
 export async function GET(request: Request) {
   if (request.headers.get("authorization") !== `Bearer ${env.CRON_SECRET}`) {
     unauthorized();

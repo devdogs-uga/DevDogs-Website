@@ -8,10 +8,5 @@
       "path": "/api/github/sync-leaderboard",
       "schedule": "0 0 * * *"
     }
-  ],
-  "functions": {
-    "api/github/sync-leaderboard/route.ts": {
-      "maxDuration": 30
-    }
-  }
+  ]
 }
