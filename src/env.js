@@ -19,6 +19,7 @@ export const env = createEnv({
             .transform((str) => "https://" + str)
             .pipe(z.url())
         : z.url().default("http://localhost:3000"),
+    CRON_SECRET: z.string().min(32),
     DEVDOGS_EPOCH: z.coerce.date().default(new Date(2024, 7, 22)),
     DISCORD_CLIENT_ID: z.string(),
     DISCORD_CLIENT_SECRET: z.string(),
@@ -68,6 +69,7 @@ export const env = createEnv({
       (process.env.VERCEL_ENV === "production"
         ? process.env.VERCEL_PROJECT_PRODUCTION_URL
         : process.env.VERCEL_URL),
+    CRON_SECRET: process.env.CRON_SECRET,
     DEVDOGS_EPOCH: process.env.DEVDOGS_EPOCH,
     GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID,
     GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET,

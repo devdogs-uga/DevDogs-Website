@@ -1,7 +1,13 @@
+import { unauthorized } from "next/navigation";
 import { NextResponse } from "next/server";
+import { env } from "~/env";
 import syncLeaderboard from "~/server/github/syncLeaderboard";
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (request.headers.get("authorization") !== `Bearer ${env.CRON_SECRET}`) {
+    unauthorized();
+  }
+
   try {
     await syncLeaderboard();
     return NextResponse.json({ success: true });
