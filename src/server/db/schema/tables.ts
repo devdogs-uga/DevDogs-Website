@@ -1,5 +1,6 @@
 import { createId } from "@paralleldrive/cuid2";
 import { sql, type SQL } from "drizzle-orm";
+import { primaryKey } from "drizzle-orm/cockroach-core";
 import {
   mysqlTable,
   uniqueIndex,
@@ -52,7 +53,7 @@ export const users = mysqlTable("user", (d) => ({
 }));
 
 export const publicProfiles = mysqlTable("public_profile", (d) => ({
-  id: d
+  userId: d
     .varchar({ length: 255 })
     .primaryKey()
     .references(() => users.id, { onDelete: "cascade" }),
@@ -70,19 +71,48 @@ export const githubProfiles = mysqlTable(
   "github_profile",
   (d) => ({
     id: d.int().primaryKey(),
-    login: d.varchar({ length: 255 }).notNull(),
+    login: d.varchar({ length: 255 }).unique().notNull(),
     avatarUrl: d.text(),
-    // pointsPreviousYears: d.int().notNull().default(0),
-    // pointsThisYear: d.int().notNull().default(0),
-    currentStreak: d.int().notNull().default(0),
-    longestStreak: d.int().notNull().default(0),
-    points: d.int().notNull().default(0),
-    ranking: d.int(),
+    allTimePoints: d.int().notNull().default(0),
+    allTimeRanking: d.int(),
+    currentYearPoints: d.int().notNull().default(0),
+    currentYearRanking: d.int(),
     accessTokenId: d
       .varchar({ length: 255 })
-      .references(() => SERVER_ONLY_DO_NOT_LEAK_accessTokens.id),
+      .references(() => SERVER_ONLY_DO_NOT_LEAK_accessTokens.id, {
+        onDelete: "cascade",
+      }),
   }),
   (t) => [uniqueIndex("login_idx").on(lower(t.login))],
+);
+
+export const points = mysqlTable(
+  "points",
+  (d) => ({
+    githubProfileId: d
+      .int()
+      .notNull()
+      .references(() => githubProfiles.id),
+    year: d.int().notNull(),
+    streakStart: d
+      .date()
+      .notNull()
+      .$defaultFn(() => new Date()),
+    streakLength: d.int().notNull().default(0),
+    longestStreakLength: d.int().notNull().default(0),
+    projectPoints: d.int().notNull().default(0),
+    streakBonusPoints: d.int().notNull().default(0),
+    academyPoints: d.int().notNull().default(0),
+    points: d
+      .int()
+      .notNull()
+      .generatedAlwaysAs(
+        (): SQL =>
+          sql`${points.projectPoints} + ${points.streakBonusPoints} + ${points.academyPoints}`,
+        { mode: "stored" },
+      ),
+  }),
+  (t) => [primaryKey({ columns: [t.githubProfileId, t.year] })],
 );
 
 export const discordProfiles = mysqlTable(
@@ -93,7 +123,9 @@ export const discordProfiles = mysqlTable(
     avatar: d.varchar({ length: 255 }).notNull(),
     accessTokenId: d
       .varchar({ length: 255 })
-      .references(() => SERVER_ONLY_DO_NOT_LEAK_accessTokens.id),
+      .references(() => SERVER_ONLY_DO_NOT_LEAK_accessTokens.id, {
+        onDelete: "cascade",
+      }),
   }),
   (t) => [uniqueIndex("username_idx").on(lower(t.username))],
 );
@@ -120,7 +152,7 @@ export const oauthStates = mysqlTable("oauth_states", (d) => ({
     .varchar({ length: 255 })
     .primaryKey()
     .$defaultFn(() => generateSecureString(128)),
-  realm: d.mysqlEnum(["uga", "discord", "github"]).notNull(),
+  provider: d.mysqlEnum(["google", "discord", "github"]).notNull(),
   callbackPath: d.text().notNull().default("/"),
   createdAt: d.timestamp().defaultNow().notNull(),
 }));
