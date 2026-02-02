@@ -17,7 +17,7 @@ CREATE TABLE `authorization_code` (
 CREATE TABLE `discord_profile` (
 	`id` varchar(255) PRIMARY KEY,
 	`username` varchar(255) NOT NULL,
-	`avatar` varchar(255) NOT NULL,
+	`avatar` varchar(255),
 	`accessTokenId` varchar(255),
 	CONSTRAINT `username_idx` UNIQUE INDEX((lower(`username`)))
 );

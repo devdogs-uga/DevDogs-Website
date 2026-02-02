@@ -95,9 +95,9 @@ async function updateSocialMedia(formData: FormData) {
     .set(
       await zfd
         .formData({
-          linkedinUsername: zfd.text(z.string().regex(/[\w\.]{2,}/)).nullish(),
-          githubUsername: zfd.text(z.string().regex(/[\w\.]{2,}/)).nullish(),
-          instagramUsername: zfd.text(z.string().regex(/[\w\.]{2,}/)).nullish(),
+          linkedinUsername: zfd.text(z.string().regex(/[\w\.]{2,}/).optional()),
+          githubUsername: zfd.text(z.string().regex(/[\w\.]{2,}/).optional()),
+          instagramUsername: zfd.text(z.string().regex(/[\w\.]{2,}/).optional()),
         })
         .parseAsync(formData),
     )
