@@ -112,7 +112,7 @@ export const points = mysqlTable(
         { mode: "stored" },
       ),
   }),
-  (t) => [primaryKey({ columns: [t.githubProfileId, t.year] })],
+  (t) => [primaryKey({ columns: [t.githubProfileId, t.year], name: "pk_points" })],
 );
 
 export const discordProfiles = mysqlTable(

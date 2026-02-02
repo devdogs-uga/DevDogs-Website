@@ -4,7 +4,11 @@ import { type Metadata } from "next";
 import { Hanken_Grotesk } from "next/font/google";
 import Navigation from "~/components/Navigation";
 
-export const metadata: Metadata = {};
+export const metadata: Metadata = {
+  title: "DevDogs",
+  description:
+    "DevDogs is a club at UGA devoted to bettering our community through open-source software.",
+};
 
 const sans = Hanken_Grotesk({
   subsets: ["latin"],
