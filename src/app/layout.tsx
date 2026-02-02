@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   title: "DevDogs",
   description:
     "DevDogs is a club at UGA devoted to bettering our community through open-source software.",
+  applicationName: "DevDogs",
 };
 
 const sans = Hanken_Grotesk({
