@@ -81,6 +81,7 @@ export async function linkProfile(
     {
       method: "PUT",
       headers: {
+        Accept: "application/json",
         Authorization: `Bot ${env.DISCORD_TOKEN}`,
         "Content-Type": "application/json",
       },
@@ -90,7 +91,7 @@ export async function linkProfile(
         roles: [],
       }),
     },
-  ).then((res) => res.json());
+  );
 
   // Insert Discord profile and access tokens, and link to user
   await db.transaction(async (tx) => {

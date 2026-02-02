@@ -88,7 +88,7 @@ export async function linkProfile(
     body: JSON.stringify({
       invitee_id: profile.id,
       role: "direct_member",
-      team_ids: [],
+      team_ids: ["T_kwDOCgbiAM4A2I_4"],
     }),
   }).then((res) => res.json());
 
