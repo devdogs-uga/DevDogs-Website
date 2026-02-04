@@ -3,6 +3,7 @@ import { db } from "../db";
 import { addSeconds } from "date-fns";
 import { oauthStates } from "../db/schema/tables";
 import { eq } from "drizzle-orm";
+import { env } from "~/env";
 
 const authorizationCode = z.object({
   code: z.string(),
@@ -39,15 +40,24 @@ const completeOAuthFlow = z.object({
     .nonoptional(),
 });
 
-const beginOAuthFlow = z.object({
-  redirect_uri: z.url({
-    // Only accept internal/private/local IP addresses
-    hostname:
-      /(^localhost$)|(^0\.0\.0\.0$)|(^127\.)|(^192\.168\.)|(^10\.)|(^172\.1[6-9]\.)|(^172\.2[0-9]\.)|(^172\.3[0-1]\.)|(^::1$)|(^[fF][cCdD])/i,
+const beginOAuthFlow = z.union([
+  z.object({
+    redirect_uri: z.url({
+      // Only accept internal/private/local IP addresses
+      hostname:
+        /(^localhost$)|(^0\.0\.0\.0$)|(^127\.)|(^192\.168\.)|(^10\.)|(^172\.1[6-9]\.)|(^172\.2[0-9]\.)|(^172\.3[0-1]\.)|(^::1$)|(^[fF][cCdD])/i,
+    }),
+    client_id: z.string(),
+    state: z.string().optional(),
   }),
-  client_id: z.string(),
-  state: z.string().optional(),
-});
+  z.object({
+    redirect_uri: z.url({
+      hostname: /devdogsuga.org$/i,
+    }),
+    client_id: z.literal(env.SHARED_AUTH_CLIENT_ID!),
+    state: z.string().optional(),
+  }),
+]);
 
 export const searchParamsSchema = z
   .instanceof(URLSearchParams)

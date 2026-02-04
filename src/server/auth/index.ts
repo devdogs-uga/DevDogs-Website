@@ -133,7 +133,6 @@ export async function handleOAuthRedirect(request: NextRequest) {
 
   // A user is trying to "Sign in with DevDogs" via OAuth
   if ("redirect_uri" in params) {
-    console.log(params.client_id !== env.SHARED_AUTH_CLIENT_ID);
     const [insertedAuthorization] = await db
       .insert(authorizationCodes)
       .values({
