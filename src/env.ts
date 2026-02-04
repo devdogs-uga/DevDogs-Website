@@ -13,10 +13,8 @@ export const env = createEnv({
    * isn't built with invalid env vars.
    */
   server: {
-    AUTH_GOOGLE_ID: z.string(),
-    AUTH_GOOGLE_SECRET: z.string(),
     BASE_URL: switchEnvironment({
-      local: z.string().default(`http://localhost:${process.env.PORT ?? 3000}`),
+      local: z.url().default(`http://localhost:${process.env.PORT ?? 3000}`),
       vercel: z
         .string()
         .transform((str) => "https://" + str)
@@ -36,6 +34,8 @@ export const env = createEnv({
     GITHUB_CLIENT_SECRET: z.string(),
     GITHUB_ORG: z.string(),
     GITHUB_TOKEN: z.string(),
+    GOOGLE_CLIENT_ID: z.string(),
+    GOOGLE_CLIENT_SECRET: z.string(),
     MYSQL_USER: switchEnvironment({
       local: z.string().default("root"),
       vercel: z.string(),
@@ -44,13 +44,21 @@ export const env = createEnv({
     MYSQL_HOST: z.string().default("localhost"),
     MYSQL_PORT: z.coerce.number().min(1).max(65536).default(25060),
     MYSQL_DATABASE: z.string().default("devdogs"),
+    NODE_ENV: z
+      .enum(["development", "test", "production"])
+      .default("development"),
     S3_PORT: z.coerce.number().min(1).max(65536).default(4566),
     S3_REGION: z.string().default("us-east-1"),
     S3_ACCESS_KEY_ID: z.string().default("test"),
     S3_SECRET_ACCESS_KEY: z.string().default("test"),
-    NODE_ENV: z
-      .enum(["development", "test", "production"])
-      .default("development"),
+    SHARED_AUTH_CLIENT_ID: switchEnvironment({
+      local: z.string().optional(),
+      vercel: z.string().min(32),
+    }),
+    SHARED_AUTH_CLIENT_SECRET: switchEnvironment({
+      local: z.string().optional(),
+      vercel: z.string().min(32),
+    }),
   },
 
   /**
@@ -67,8 +75,6 @@ export const env = createEnv({
    * middlewares) or client-side so we need to destruct manually.
    */
   runtimeEnv: {
-    AUTH_GOOGLE_ID: process.env.AUTH_GOOGLE_ID,
-    AUTH_GOOGLE_SECRET: process.env.AUTH_GOOGLE_SECRET,
     BASE_URL:
       process.env.BASE_URL ??
       (process.env.VERCEL_ENV === "production"
@@ -80,6 +86,8 @@ export const env = createEnv({
     GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET,
     GITHUB_ORG: process.env.GITHUB_ORG,
     GITHUB_TOKEN: process.env.GITHUB_TOKEN,
+    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
     DISCORD_CLIENT_ID: process.env.DISCORD_CLIENT_ID,
     DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,
     DISCORD_GUILD_ID: process.env.DISCORD_GUILD_ID,
@@ -90,11 +98,13 @@ export const env = createEnv({
     MYSQL_HOST: process.env.MYSQL_HOST,
     MYSQL_PORT: process.env.MYSQL_PORT,
     MYSQL_DATABASE: process.env.MYSQL_DATABASE,
+    NODE_ENV: process.env.NODE_ENV,
     S3_PORT: process.env.S3_PORT,
     S3_REGION: process.env.S3_REGION,
     S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID,
     S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
-    NODE_ENV: process.env.NODE_ENV,
+    SHARED_AUTH_CLIENT_ID: process.env.SHARED_AUTH_CLIENT_ID,
+    SHARED_AUTH_CLIENT_SECRET: process.env.SHARED_AUTH_CLIENT_SECRET,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

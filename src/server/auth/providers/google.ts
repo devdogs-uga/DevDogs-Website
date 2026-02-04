@@ -19,7 +19,7 @@ export function requestAuthorization(
       new URLSearchParams({
         state: stateToken,
         redirect_uri: redirectUri,
-        client_id: env.AUTH_GOOGLE_ID,
+        client_id: env.GOOGLE_CLIENT_ID,
         response_type: "code",
         scope:
           "https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email",
@@ -62,8 +62,8 @@ export async function createSession(
       "Content-Type": "application/x-www-form-urlencoded",
     },
     body: new URLSearchParams({
-      client_id: env.AUTH_GOOGLE_ID,
-      client_secret: env.AUTH_GOOGLE_SECRET,
+      client_id: env.GOOGLE_CLIENT_ID,
+      client_secret: env.GOOGLE_CLIENT_SECRET,
       code: authorizationCode,
       redirect_uri: redirectUri,
       grant_type: "authorization_code",

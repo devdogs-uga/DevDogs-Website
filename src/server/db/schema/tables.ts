@@ -29,7 +29,6 @@ export const authorizationCodes = mysqlTable("authorization_code", (d) => ({
     .$defaultFn(() => generateSecureString(128)),
   clientId: d
     .varchar({ length: 255 })
-    .notNull()
     .references(() => users.id),
   redirectUri: d.text().notNull(),
   state: d.text(),

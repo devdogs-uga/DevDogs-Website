@@ -133,10 +133,14 @@ export async function handleOAuthRedirect(request: NextRequest) {
 
   // A user is trying to "Sign in with DevDogs" via OAuth
   if ("redirect_uri" in params) {
+    console.log(params.client_id !== env.SHARED_AUTH_CLIENT_ID);
     const [insertedAuthorization] = await db
       .insert(authorizationCodes)
       .values({
-        clientId: params.client_id,
+        clientId:
+          params.client_id !== env.SHARED_AUTH_CLIENT_ID
+            ? params.client_id
+            : null,
         redirectUri: params.redirect_uri,
         state: params.state,
       })
@@ -239,6 +243,42 @@ export async function handleProfileRequest(request: NextRequest) {
     unauthorized();
   }
 
+  if (
+    clientId === env.SHARED_AUTH_CLIENT_ID &&
+    clientSecret === env.SHARED_AUTH_CLIENT_SECRET
+  ) {
+    const authorization = await db.query.authorizationCodes.findFirst({
+      where: {
+        code: { eq: code },
+        clientId: { isNull: true },
+        redirectUri: { eq: redirectUri },
+      },
+      with: {
+        user: {
+          with: {
+            publicProfile: true,
+          },
+          columns: {
+            ugaMyId: true,
+          },
+        },
+      },
+    });
+
+    if (!authorization?.user) {
+      unauthorized();
+    }
+
+    await db
+      .delete(authorizationCodes)
+      .where(eq(authorizationCodes.code, code));
+
+    return Response.json({
+      ...authorization.user.publicProfile,
+      id: authorization.user.ugaMyId,
+    });
+  }
+
   const authorization = await db.query.authorizationCodes.findFirst({
     where: {
       code: { eq: code },
@@ -264,7 +304,7 @@ export async function handleProfileRequest(request: NextRequest) {
 
   if (
     !authorization?.user ||
-    !authorization.client.oauthSecret ||
+    !authorization.client?.oauthSecret ||
     !(await bcrypt.compare(clientSecret, authorization.client.oauthSecret))
   ) {
     unauthorized();

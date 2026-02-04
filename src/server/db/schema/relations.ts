@@ -64,7 +64,6 @@ const relations = defineRelations(tables, (r) => ({
     client: r.one.users({
       from: r.authorizationCodes.clientId,
       to: r.users.id,
-      optional: false,
     }),
     user: r.one.users({
       from: r.authorizationCodes.userId,
