@@ -243,8 +243,8 @@ export async function handleProfileRequest(request: NextRequest) {
   }
 
   if (
-    decodeURIComponent(clientId) === env.SHARED_AUTH_CLIENT_ID &&
-    decodeURIComponent(clientSecret) === env.SHARED_AUTH_CLIENT_SECRET
+    clientId === env.SHARED_AUTH_CLIENT_ID &&
+    clientSecret === env.SHARED_AUTH_CLIENT_SECRET
   ) {
     const authorization = await db.query.authorizationCodes.findFirst({
       where: {
