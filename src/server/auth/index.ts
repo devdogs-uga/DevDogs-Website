@@ -243,8 +243,8 @@ export async function handleProfileRequest(request: NextRequest) {
   }
 
   if (
-    clientId === env.SHARED_AUTH_CLIENT_ID &&
-    clientSecret === env.SHARED_AUTH_CLIENT_SECRET
+    decodeURIComponent(clientId) === env.SHARED_AUTH_CLIENT_ID &&
+    decodeURIComponent(clientSecret) === env.SHARED_AUTH_CLIENT_SECRET
   ) {
     const authorization = await db.query.authorizationCodes.findFirst({
       where: {
@@ -265,6 +265,9 @@ export async function handleProfileRequest(request: NextRequest) {
     });
 
     if (!authorization?.user) {
+      console.error(
+        "Vercel flow: invalid code or could not find user in database.",
+      );
       unauthorized();
     }
 
@@ -306,6 +309,9 @@ export async function handleProfileRequest(request: NextRequest) {
     !authorization.client?.oauthSecret ||
     !(await bcrypt.compare(clientSecret, authorization.client.oauthSecret))
   ) {
+    console.error(
+      "Local flow: invalid code, could not find user in database, or incorrect client secret",
+    );
     unauthorized();
   }
 
