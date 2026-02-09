@@ -150,7 +150,7 @@ export default async function HomePage() {
         <h2 className="px-4 text-center text-sm font-extrabold tracking-wide text-zinc-400 uppercase">
           Contributors to DevDogs are
         </h2>
-        <ul className="w-full overflow-hidden from-rose-400 to-teal-400 bg-clip-text font-medium supports-[background-clip:text]:bg-linear-to-r/oklch supports-[background-clip:text]:text-transparent">
+        <ul className="w-full overflow-hidden text-teal-300">
           <Marquee className="overflow-hidden text-xl/none" autoFill>
             <MarqueeItem>Software Engineers</MarqueeItem>
             <MarqueeItem>UI Designers</MarqueeItem>
