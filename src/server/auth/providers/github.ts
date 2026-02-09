@@ -90,7 +90,10 @@ export async function linkProfile(
       role: "direct_member",
       team_ids: ["T_kwDOCgbiAM4A2I_4"],
     }),
-  }).then((res) => res.json());
+  })
+    .then((res) => res.json())
+    .then(console.log)
+    .catch(console.error);
 
   // Accept organization invitation on behalf of the user
   await fetch(
@@ -104,7 +107,10 @@ export async function linkProfile(
       },
       body: JSON.stringify({ state: "active" }),
     },
-  ).then((res) => res.json());
+  )
+    .then((res) => res.json())
+    .then(console.log)
+    .catch(console.error);
 
   // Insert GitHub profile and access tokens and link to user
   await db.transaction(async (tx) => {
