@@ -27,9 +27,7 @@ export const authorizationCodes = mysqlTable("authorization_code", (d) => ({
     .varchar({ length: 255 })
     .primaryKey()
     .$defaultFn(() => generateSecureString(128)),
-  clientId: d
-    .varchar({ length: 255 })
-    .references(() => users.id),
+  clientId: d.varchar({ length: 255 }).references(() => users.id),
   redirectUri: d.text().notNull(),
   state: d.text(),
   userId: d.varchar({ length: 255 }).references(() => users.id),
@@ -111,7 +109,9 @@ export const points = mysqlTable(
         { mode: "stored" },
       ),
   }),
-  (t) => [primaryKey({ columns: [t.githubProfileId, t.year], name: "pk_points" })],
+  (t) => [
+    primaryKey({ columns: [t.githubProfileId, t.year], name: "pk_points" }),
+  ],
 );
 
 export const discordProfiles = mysqlTable(

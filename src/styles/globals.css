@@ -6,7 +6,6 @@
   --font-sans:
     var(--font-sans), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
     "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  --font-brand: var(--font-brand), cursive;
   --animate-wave: wave 5s linear infinite;
   --animate-collapsible-open: collapsible-open 200ms ease-in;
   --animate-collapsible-closed: collapsible-closed 200ms ease-out;

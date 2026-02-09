@@ -1,4 +1,5 @@
 import * as Collapsible from "@radix-ui/react-collapsible";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import Image from "next/image";
 import Link from "next/link";
 import type { ComponentProps, PropsWithChildren, ReactNode } from "react";
@@ -6,25 +7,28 @@ import {
   PiArrowRightBold,
   PiCalendarStarDuotone,
   PiCodeDuotone,
-  PiDotsNineBold,
   PiDotsThreeVertical,
   PiEnvelopeSimpleFill,
+  PiGearBold,
   PiGithubLogoFill,
   PiHandshakeDuotone,
   PiInstagramLogoFill,
   PiLink,
   PiLinkedinLogoFill,
+  PiListBold,
+  PiSignOutBold,
   PiUsersThreeDuotone,
-  PiXBold,
+  PiXBold
 } from "react-icons/pi";
 import devdog from "~/assets/devdog.png";
+import { env } from "~/env";
 import linkGithubProfile from "~/server/actions/linkGithubProfile";
+import signOut from "~/server/actions/signOut";
 import { getSession } from "~/server/auth";
 import Avatar from "./Avatar";
 import LinkButton from "./LinkButton";
 import NavContainer from "./NavContainer";
 import Share from "./Share";
-import { env } from "~/env";
 
 interface NavItemProps extends PropsWithChildren {
   href: ComponentProps<typeof Link>["href"];
@@ -219,7 +223,7 @@ export default async function Navigation() {
 
   return (
     <NavContainer>
-      <nav className="fixed top-0 left-0 z-60 flex w-full flex-col from-rose-950/20 to-black/30 py-0.75 transition-[background-color,box-shadow,backdrop-filter] group-data-from-link-in-bio:h-dvh group-data-scrolled:bg-black/30 group-data-scrolled:shadow-xl group-data-scrolled:backdrop-blur-sm group-data-[state=open]:border-rose-600 group-data-[state=open]:bg-radial group-data-[state=open]:backdrop-blur-sm">
+      <nav className="fixed top-0 left-0 z-60 flex w-full flex-col from-rose-950/20 to-black/30 py-0.75 transition-[background-color,box-shadow,backdrop-filter] group-data-from-link-in-bio:h-dvh group-data-scrolled:bg-black/40 group-data-scrolled:shadow-xl group-data-scrolled:backdrop-blur-sm group-data-[state=open]:border-rose-600 group-data-[state=open]:bg-radial group-data-[state=open]:backdrop-blur-sm">
         <div className="mx-auto flex w-full max-w-360 grid-cols-[1fr_max-content_1fr] items-center justify-between px-4 py-4.25 md:px-6 md:py-4.5 lg:grid">
           <Link
             href="/"
@@ -273,12 +277,52 @@ export default async function Navigation() {
                       </span>
                     </Link>
                   )}
-                  <Link
-                    className="text-3xl/0 md:text-4xl/0"
-                    href="/settings/profile"
-                  >
-                    <Avatar {...session.user.publicProfile} />
-                  </Link>
+                  <DropdownMenu.Root>
+                    <DropdownMenu.Trigger className="text-3xl/0 md:text-4xl/0">
+                      <Avatar {...session.user.publicProfile} />
+                    </DropdownMenu.Trigger>
+
+                    <DropdownMenu.Portal>
+                      <DropdownMenu.Content
+                        className="z-100 min-w-48 rounded-lg border border-zinc-700 bg-zinc-950/80 py-1.5 font-medium shadow-2xl backdrop-blur-xs"
+                        sideOffset={6}
+                        align="end"
+                      >
+                        <p className="flex items-center gap-2 px-2 py-1.5">
+                          <span className="text-2xl/0 md:text-3xl/0">
+                            <Avatar {...session.user.publicProfile} />
+                          </span>
+                          <span className="flex flex-col">
+                            <span className="text-sm">
+                              {session.user.publicProfile.name}
+                            </span>
+                            <span className="text-xs text-zinc-400">
+                              Contributor
+                            </span>
+                          </span>
+                        </p>
+
+                        <DropdownMenu.Separator className="mx-3 my-1.5 h-px w-[calc(100%-var(--spacing)*6)] bg-zinc-700" />
+
+                        <DropdownMenu.Item asChild>
+                          <Link
+                            href="/settings/profile"
+                            className="flex items-center gap-2 px-3 py-1.5 transition-colors hover:bg-zinc-700"
+                          >
+                            <PiGearBold /> Settings
+                          </Link>
+                        </DropdownMenu.Item>
+
+                        <form className="contents" action={signOut}>
+                          <DropdownMenu.Item asChild>
+                            <button className="flex w-full items-center gap-2 px-3 py-1.5 text-rose-300 transition-colors hover:bg-rose-950 hover:text-rose-50">
+                              <PiSignOutBold /> Sign Out
+                            </button>
+                          </DropdownMenu.Item>
+                        </form>
+                      </DropdownMenu.Content>
+                    </DropdownMenu.Portal>
+                  </DropdownMenu.Root>
                 </p>
               </>
             ) : (
@@ -292,7 +336,7 @@ export default async function Navigation() {
             )}
 
             <Collapsible.Trigger className="group -mx-1.5 grid grid-cols-1 grid-rows-1 items-center rounded-sm px-1.5 py-1 text-2xl text-zinc-200 transition-colors group-data-from-link-in-bio:hidden hover:bg-rose-950 hover:text-white md:hidden md:text-3xl">
-              <PiDotsNineBold className="col-start-1 row-start-1 transition-opacity group-data-[state=open]:opacity-0" />
+              <PiListBold className="col-start-1 row-start-1 transition-opacity group-data-[state=open]:opacity-0" />
               <PiXBold className="col-start-1 row-start-1 opacity-0 transition-opacity group-data-[state=open]:opacity-100" />
             </Collapsible.Trigger>
           </div>

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "next build",
-    "check": "turbo run lint:fix typecheck prettier",
+    "check": "pnpm run lint:fix && pnpm run typecheck && pnpm run prettier",
     "db:generate": "pnpm drizzle-kit export > migrations/ddl.sql",
     "db:migrate": "docker compose run --rm atlas schema apply --config file://migrations/atlas.hcl --env local",
     "db:push": "pnpm db:generate && pnpm db:migrate",
@@ -50,6 +50,7 @@
     "next": "^16.1.5",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "react-fast-marquee": "^1.6.5",
     "react-icons": "^5.5.0",
     "zod": "4.1.8",
     "zod-form-data": "^3.0.1"
