@@ -11,7 +11,7 @@
     "db:push": "pnpm db:generate && pnpm db:migrate",
     "db:studio": "drizzle-kit studio",
     "docker:build": "docker compose create --pull=always",
-    "docker:ready": "docker compose up mysql s3 --build --wait",
+    "docker:ready": "docker compose up mysql mysql-dev s3 --build --wait",
     "docker:reset": "docker compose down -v --remove-orphans",
     "dev": "pnpm docker:ready && pnpm db:push && turbo run Next.js Drizzle-Studio",
     "Next.js": "next dev --turbo",
