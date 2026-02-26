@@ -37,7 +37,7 @@ interface ClosedIssue {
   closedAt: Date;
 }
 
-async function getClosedIssues() {
+async function getClosedIssues(year: number) {
   const results: ClosedIssue[] = [];
   let cursor: string | null = null;
   let hasNextPage = true;
@@ -45,7 +45,7 @@ async function getClosedIssues() {
   while (hasNextPage) {
     const { search }: ClosedIssuesResult = await graphql(ClosedIssues, {
       cursor,
-      searchQuery: `org:${env.GITHUB_ORG} type:issue is:closed`,
+      searchQuery: `org:${env.GITHUB_ORG} type:issue closed:${year}-01-01..${year}-12-31`,
       headers: {
         authorization: `Bearer ${env.GITHUB_TOKEN}`,
       },
@@ -71,114 +71,140 @@ async function getClosedIssues() {
   return results;
 }
 
+async function syncYearPoints(
+  profiles: Map<number, Required<typeof githubProfiles.$inferInsert>>,
+  year: number,
+  isCurrent: boolean,
+) {
+  const closedIssues = await getClosedIssues(year);
+  const points = new Map<number, Required<typeof pointsTable.$inferInsert>>();
+
+  if (closedIssues.length < 0) {
+    return [];
+  }
+
+  closedIssues.sort((a, b) => compareAsc(a.closedAt, b.closedAt));
+
+  for (const { assignee, basePoints, closedAt } of closedIssues) {
+    if (!profiles.has(assignee.databaseId)) {
+      profiles.set(assignee.databaseId, {
+        id: assignee.databaseId,
+        login: assignee.login,
+        avatarUrl: assignee.avatarUrl,
+        allTimePoints: 0,
+        allTimeRanking: null,
+        currentYearPoints: 0,
+        currentYearRanking: null,
+        accessTokenId: null,
+      });
+    }
+
+    const pointsEntry = points.get(assignee.databaseId);
+    const profile = profiles.get(assignee.databaseId)!;
+
+    profile.allTimePoints += basePoints;
+
+    if (isCurrent) {
+      profile.currentYearPoints += basePoints;
+    }
+
+    if (!pointsEntry) {
+      points.set(assignee.databaseId, {
+        year,
+        githubProfileId: assignee.databaseId,
+        academyPoints: 0,
+        streakStart: closedAt,
+        streakLength: 1,
+        longestStreakLength: 1,
+        projectPoints: basePoints,
+        streakBonusPoints: 0,
+      });
+      continue;
+    }
+
+    pointsEntry.projectPoints += basePoints;
+
+    const streakRenewalStart = addWeeks(
+      pointsEntry.streakStart,
+      pointsEntry.streakLength,
+    );
+
+    const streakRenewalCutoff = addWeeks(
+      pointsEntry.streakStart,
+      pointsEntry.streakLength + 1,
+    );
+
+    if (isAfter(closedAt, streakRenewalCutoff)) {
+      pointsEntry.streakStart = closedAt;
+      pointsEntry.streakLength = 1;
+      continue;
+    }
+
+    if (isAfter(closedAt, streakRenewalStart)) {
+      pointsEntry.streakLength++;
+    }
+
+    pointsEntry.longestStreakLength = Math.max(
+      pointsEntry.streakLength,
+      pointsEntry.longestStreakLength,
+    );
+
+    const bonusPoints = (basePoints * pointsEntry.streakLength) / 10;
+    pointsEntry.streakBonusPoints += bonusPoints;
+    profile.allTimePoints += bonusPoints;
+
+    if (isCurrent) {
+      profile.currentYearPoints += bonusPoints;
+    }
+  }
+
+  return Array.from(points.values());
+}
+
 export default async function syncLeaderboard() {
-  const closedIssues = await getClosedIssues();
+  const startYear = env.DEVDOGS_EPOCH.getUTCFullYear();
+  const endYear = new Date().getUTCFullYear();
   const profiles = new Map<
     number,
     Required<typeof githubProfiles.$inferInsert>
   >();
 
-  closedIssues.sort((a, b) => compareAsc(a.closedAt, b.closedAt));
+  const points = await Promise.all(
+    Array.from({ length: endYear - startYear + 1 }, (_, i) =>
+      syncYearPoints(profiles, startYear + i, startYear + i === endYear),
+    ),
+  );
 
-  for (const { assignee } of closedIssues) {
-    profiles.set(assignee.databaseId, {
-      id: assignee.databaseId,
-      login: assignee.login,
-      avatarUrl: assignee.avatarUrl,
-      allTimePoints: 0,
-      allTimeRanking: null,
-      currentYearPoints: 0,
-      currentYearRanking: null,
-      accessTokenId: null,
-    });
-  }
+  const rankedProfiles = Array.from(profiles.values());
 
-  const points = new Map<number, Required<typeof pointsTable.$inferInsert>>();
-  let year = env.DEVDOGS_EPOCH.getUTCFullYear();
+  rankedProfiles.sort((a, b) => b.currentYearPoints - a.currentYearPoints);
+  rankedProfiles.forEach((profile, i) => {
+    profile.currentYearRanking = i + 1;
+  });
+
+  rankedProfiles.sort((a, b) => b.allTimePoints - a.allTimePoints);
+  rankedProfiles.forEach((profile, i) => {
+    profile.allTimeRanking = i + 1;
+  });
 
   await db.transaction(async (tx) => {
-    for (const { assignee, closedAt, basePoints } of closedIssues) {
-      if (closedAt.getUTCFullYear() > year) {
-        await tx
-          .insert(pointsTable)
-          .values([...points.values()])
-          .onDuplicateKeyUpdate({
-            set: {
-              academyPoints: sql`values(${pointsTable.academyPoints})`,
-              longestStreakLength: sql`values(${pointsTable.longestStreakLength})`,
-              projectPoints: sql`values(${pointsTable.projectPoints})`,
-              streakBonusPoints: sql`values(${pointsTable.streakBonusPoints})`,
-              streakStart: sql`values(${pointsTable.streakStart})`,
-              streakLength: sql`values(${pointsTable.streakLength})`,
-            },
-          });
-
-        year = closedAt.getUTCFullYear();
-        points.clear();
-      }
-
-      const pointsEntry = points.get(assignee.databaseId);
-      const profile = profiles.get(assignee.databaseId)!;
-
-      profile.allTimePoints += basePoints;
-
-      if (year === new Date().getUTCFullYear()) {
-        profile.currentYearPoints += basePoints;
-      }
-
-      if (!pointsEntry) {
-        points.set(assignee.databaseId, {
-          year,
-          githubProfileId: assignee.databaseId,
-          academyPoints: 0,
-          streakStart: closedAt,
-          streakLength: 1,
-          longestStreakLength: 1,
-          projectPoints: basePoints,
-          streakBonusPoints: 0,
-        });
-        continue;
-      }
-
-      pointsEntry.projectPoints += basePoints;
-
-      const streakRenewalStart = addWeeks(
-        pointsEntry.streakStart,
-        pointsEntry.streakLength,
-      );
-
-      const streakRenewalCutoff = addWeeks(
-        pointsEntry.streakStart,
-        pointsEntry.streakLength + 1,
-      );
-
-      if (isAfter(closedAt, streakRenewalCutoff)) {
-        pointsEntry.streakStart = closedAt;
-        pointsEntry.streakLength = 1;
-        continue;
-      }
-
-      if (isAfter(closedAt, streakRenewalStart)) {
-        pointsEntry.streakLength++;
-      }
-
-      pointsEntry.longestStreakLength = Math.max(
-        pointsEntry.streakLength,
-        pointsEntry.longestStreakLength,
-      );
-
-      const bonusPoints = (basePoints * pointsEntry.streakLength) / 10;
-      pointsEntry.streakBonusPoints += bonusPoints;
-      profile.allTimePoints += bonusPoints;
-
-      if (year === new Date().getUTCFullYear()) {
-        profile.currentYearPoints += bonusPoints;
-      }
-    }
+    await tx
+      .insert(githubProfiles)
+      .values(rankedProfiles)
+      .onDuplicateKeyUpdate({
+        set: {
+          login: sql`values(${githubProfiles.login})`,
+          avatarUrl: sql`values(${githubProfiles.avatarUrl})`,
+          allTimePoints: sql`values(${githubProfiles.allTimePoints})`,
+          allTimeRanking: sql`values(${githubProfiles.allTimeRanking})`,
+          currentYearPoints: sql`values(${githubProfiles.currentYearPoints})`,
+          currentYearRanking: sql`values(${githubProfiles.currentYearRanking})`,
+        },
+      });
 
     await tx
       .insert(pointsTable)
-      .values([...points.values()])
+      .values(points.flat())
       .onDuplicateKeyUpdate({
         set: {
           academyPoints: sql`values(${pointsTable.academyPoints})`,
@@ -187,33 +213,6 @@ export default async function syncLeaderboard() {
           streakBonusPoints: sql`values(${pointsTable.streakBonusPoints})`,
           streakLength: sql`values(${pointsTable.streakLength})`,
           streakStart: sql`values(${pointsTable.streakStart})`,
-        },
-      });
-
-    const profileValues = [...profiles.values()];
-    profileValues.sort((a, b) => b.currentYearPoints - a.currentYearPoints);
-
-    for (let i = 0; i < profileValues.length; i++) {
-      profileValues[i]!.currentYearRanking = i + 1;
-    }
-
-    profileValues.sort((a, b) => b.allTimePoints - a.allTimePoints);
-
-    for (let i = 0; i < profileValues.length; i++) {
-      profileValues[i]!.allTimeRanking = i + 1;
-    }
-
-    await tx
-      .insert(githubProfiles)
-      .values(profileValues)
-      .onDuplicateKeyUpdate({
-        set: {
-          login: sql`values(${githubProfiles.login})`,
-          allTimePoints: sql`values(${githubProfiles.allTimePoints})`,
-          allTimeRanking: sql`values(${githubProfiles.allTimeRanking})`,
-          avatarUrl: sql`values(${githubProfiles.avatarUrl})`,
-          currentYearPoints: sql`values(${githubProfiles.currentYearPoints})`,
-          currentYearRanking: sql`values(${githubProfiles.currentYearRanking})`,
         },
       });
   });
