@@ -50,13 +50,15 @@ export default async function RootLayout({
 
   return (
     <html lang="en" className={`${sans.variable}`}>
-      <body className="flex min-h-dvh flex-col bg-zinc-950 text-white">
-        <Navigation
-          githubProfile={session?.user.github}
-          streak={streak}
-          publicProfile={session?.user.publicProfile}
-        />
-        {children}
+      <body className="bg-zinc-950 text-white">
+        <div className="flex flex-col min-h-screen">
+          <Navigation
+            githubProfile={session?.user.github}
+            streak={streak}
+            publicProfile={session?.user.publicProfile}
+          />
+          {children}
+        </div>
         <Footer />
       </body>
     </html>

@@ -27,14 +27,16 @@ export default function AlertBanner({ linkedGithubProfile, streak }: Props) {
     <Collapsible.Root
       className="border-t-3 border-rose-700 bg-rose-700"
       defaultOpen={!linkedGithubProfile || streakExpiresSoon}
-      suppressHydrationWarning
     >
-      <Collapsible.Content className="data-[state=open]:animate-collapsible-open animate-collapsible-closed relative mx-auto w-full max-w-360 overflow-hidden pb-0.75 font-medium">
+      <Collapsible.Content
+        className="data-[state=open]:animate-collapsible-open animate-collapsible-closed relative mx-auto w-full max-w-360 overflow-hidden pb-0.75 font-medium"
+        suppressHydrationWarning
+      >
         <div className="relative flex items-center justify-center gap-2 px-2 py-0.75 sm:px-14">
           <div className="flex w-full flex-row flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm transition-opacity has-[[data-countdown]:empty]:opacity-0 @md:pb-0">
             {!linkedGithubProfile && (
               <form className="contents" action={linkGithubProfile}>
-                <p className="text-balance text-center">
+                <p className="text-center text-balance">
                   Start Contributing by Linking your GitHub Account to DevDogs
                 </p>
                 <button
@@ -72,7 +74,10 @@ export default function AlertBanner({ linkedGithubProfile, streak }: Props) {
               </>
             )}
           </div>
-          <Collapsible.Trigger className="justify-self-end rounded-full p-1 transition-colors hover:bg-rose-900 sm:absolute sm:right-4">
+          <Collapsible.Trigger
+            className="justify-self-end rounded-full p-1 transition-colors hover:bg-rose-900 sm:absolute sm:right-4"
+            suppressHydrationWarning
+          >
             <PiXBold />
           </Collapsible.Trigger>
         </div>
