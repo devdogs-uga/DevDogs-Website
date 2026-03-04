@@ -20,6 +20,7 @@ export const env = createEnv({
         .transform((str) => "https://" + str)
         .pipe(z.url()),
     }),
+    BCRYPT_ROUNDS: z.number().default(12),
     CRON_SECRET: switchEnvironment({
       local: z.string().default(""),
       vercel: z.string().min(32),
@@ -80,6 +81,7 @@ export const env = createEnv({
       (process.env.VERCEL_ENV === "production"
         ? process.env.VERCEL_PROJECT_PRODUCTION_URL
         : process.env.VERCEL_URL),
+    BCRYPT_ROUNDS: process.env.BCRYPT_ROUNDS,
     CRON_SECRET: process.env.CRON_SECRET,
     DEVDOGS_EPOCH: process.env.DEVDOGS_EPOCH,
     GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID,

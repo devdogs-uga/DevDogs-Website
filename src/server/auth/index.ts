@@ -288,11 +288,7 @@ export async function handleProfileRequest(request: NextRequest) {
       redirectUri: { eq: redirectUri },
     },
     with: {
-      client: {
-        columns: {
-          oauthSecret: true,
-        },
-      },
+      client: true,
       user: {
         with: {
           publicProfile: true,
@@ -306,8 +302,8 @@ export async function handleProfileRequest(request: NextRequest) {
 
   if (
     !authorization?.user ||
-    !authorization.client?.oauthSecret ||
-    !(await bcrypt.compare(clientSecret, authorization.client.oauthSecret))
+    !authorization.client ||
+    !(await bcrypt.compare(clientSecret, authorization.client.clientSecret))
   ) {
     console.error(
       "Local flow: invalid code, could not find user in database, or incorrect client secret",

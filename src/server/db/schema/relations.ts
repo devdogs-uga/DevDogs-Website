@@ -16,12 +16,45 @@ const relations = defineRelations(tables, (r) => ({
       from: r.users.discordId,
       to: r.discordProfiles.id,
     }),
+    oauthKey: r.one.oauthKeys({
+      from: r.users.id,
+      to: r.oauthKeys.clientId,
+    }),
+    ticTacToeKey: r.one.ticTacToeKeys({
+      from: r.users.id,
+      to: r.ticTacToeKeys.userId,
+    }),
   },
   sessions: {
     user: r.one.users({
       from: r.sessions.userId,
       to: r.users.id,
       optional: false,
+    }),
+    publicProfile: r.one.publicProfiles({
+      from: r.sessions.userId,
+      to: r.publicProfiles.userId,
+      optional: false,
+    }),
+    oauthKey: r.one.oauthKeys({
+      from: r.sessions.userId,
+      to: r.oauthKeys.clientId,
+    }),
+    ticTacToeKey: r.one.ticTacToeKeys({
+      from: r.sessions.userId,
+      to: r.ticTacToeKeys.userId,
+    }),
+  },
+  oauthKeys: {
+    client: r.one.users({
+      from: r.oauthKeys.clientId,
+      to: r.users.id,
+    }),
+  },
+  ticTacToeKeys: {
+    client: r.one.users({
+      from: r.ticTacToeKeys.userId,
+      to: r.users.id,
     }),
   },
   publicProfiles: {
@@ -61,9 +94,9 @@ const relations = defineRelations(tables, (r) => ({
       }),
   },
   authorizationCodes: {
-    client: r.one.users({
+    client: r.one.oauthKeys({
       from: r.authorizationCodes.clientId,
-      to: r.users.id,
+      to: r.oauthKeys.clientId,
     }),
     user: r.one.users({
       from: r.authorizationCodes.userId,

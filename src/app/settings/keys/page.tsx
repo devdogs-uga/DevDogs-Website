@@ -4,13 +4,17 @@ import { expectSession } from "~/server/auth";
 
 export default async function Keys() {
   const session = await expectSession("/settings/profile", {
-    user: true,
+    oauthKey: {
+      columns: {
+        clientId: true,
+      },
+    },
   });
 
   return (
     <SettingsNavigation title="Public Profile" pathname="/settings/keys">
       <section className="w-full overflow-hidden rounded-md border border-zinc-800">
-        <OAuthSecrets userId={session.userId} />
+        <OAuthSecrets clientId={session.oauthKey?.clientId ?? null} />
       </section>
     </SettingsNavigation>
   );

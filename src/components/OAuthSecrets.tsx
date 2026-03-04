@@ -64,7 +64,7 @@ function CopyInput({ value, disabled }: CopyInputProps) {
   return (
     <span className="flex max-w-md overflow-hidden rounded-sm border border-zinc-700 bg-zinc-950 ring-0 ring-zinc-400 transition-shadow focus-within:ring-1 has-disabled:cursor-not-allowed">
       <input
-        className="form-input w-full border-0 bg-zinc-950 px-3 inset-shadow-sm placeholder:text-zinc-600 focus:ring-0 disabled:pointer-events-none"
+        className="form-input w-full border-0 bg-zinc-950 px-3 inset-shadow-sm placeholder:text-zinc-600 disabled:text-zinc-600 focus:ring-0 disabled:pointer-events-none"
         value={value}
         disabled={disabled}
         readOnly
@@ -87,19 +87,31 @@ function CopyInput({ value, disabled }: CopyInputProps) {
   );
 }
 
+type ActionState =
+  | {
+      clientId: string;
+      clientSecret: string;
+    }
+  | {
+      clientId: string;
+      clientSecret: null;
+    }
+  | {
+      clientId: null;
+      clientSecret: null;
+    };
+
 interface Props {
-  userId: string;
+  clientId: string | null;
 }
 
-export default function OAuthSecrets({ userId }: Props) {
+export default function OAuthSecrets({ clientId: defaultClientId }: Props) {
   const [alertOpen, setAlertOpen] = useState(false);
-  const [{ oauthSecret }, dispatch, pending] = useActionState<{
-    oauthSecret: string | null;
-  }>(resetOAuthSecret, {
-    oauthSecret: null,
-  });
-
-  console.log({ oauthSecret });
+  const [{ clientId, clientSecret }, dispatch, pending] =
+    useActionState<ActionState>(resetOAuthSecret, {
+      clientId: defaultClientId,
+      clientSecret: null,
+    });
 
   useEffect(() => {
     if (!pending) {
@@ -114,16 +126,22 @@ export default function OAuthSecrets({ userId }: Props) {
 
         <label className="flex flex-col gap-1.5">
           <span className="max-w-prose text-zinc-300">Client ID</span>
-          <CopyInput value={userId} />
+          <CopyInput
+            value={clientId ?? "(No client exists)"}
+            disabled={clientId === null}
+          />
         </label>
 
         <label className="flex flex-col gap-1.5">
           <span className="max-w-prose text-zinc-300">Client Secret</span>
           <CopyInput
             value={
-              oauthSecret ?? "ddk_ • • • • • • • • • • • • • • • • • • • •"
+              clientId
+                ? (clientSecret ??
+                  "ddk_ • • • • • • • • • • • • • • • • • • • •")
+                : "(No client exists)"
             }
-            disabled={oauthSecret === null}
+            disabled={clientSecret === null}
           />
         </label>
       </div>
@@ -142,7 +160,7 @@ export default function OAuthSecrets({ userId }: Props) {
             className="rounded-sm bg-purple-900 px-4 py-1 text-nowrap ring-purple-950 hover:not-disabled:bg-purple-200 hover:not-disabled:text-purple-950"
             type="button"
           >
-            <PiArrowsClockwiseBold /> Reset Client Secret
+            <PiArrowsClockwiseBold /> Reset Client Keys
           </FormButton>
         </AlertDialog.Trigger>
       </div>
@@ -156,12 +174,11 @@ export default function OAuthSecrets({ userId }: Props) {
             action={dispatch}
           >
             <AlertDialog.Title className="flex items-center gap-2 text-2xl/none font-semibold">
-              Reset Client Secret
+              Reset Client Keys
             </AlertDialog.Title>
             <AlertDialog.Description>
-              Resetting your client secret invalidates your existing client
-              secret. This means you won&rsquo;t be able to continue using the
-              existing secret.
+              Resetting your client keys invalidates your existing client ID and secret. This means
+              you won&rsquo;t be able to continue using them in your projects.
             </AlertDialog.Description>
             <div className="flex items-center justify-end gap-4">
               <AlertDialog.Cancel className="rounded-sm border border-zinc-700 bg-zinc-800 px-4 py-1 shadow-xs transition-[background-color,color,border-color,box-shadow] hover:border-zinc-600 hover:bg-zinc-700 hover:text-white hover:shadow-sm">

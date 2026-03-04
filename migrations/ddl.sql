@@ -35,7 +35,16 @@ CREATE TABLE `github_profile` (
 	CONSTRAINT `login_idx` UNIQUE INDEX((lower(`login`)))
 );
 
-CREATE TABLE `oauth_states` (
+CREATE TABLE `oauth_key` (
+	`userId` varchar(255) PRIMARY KEY,
+	`clientId` varchar(255) NOT NULL,
+	`clientSecret` varchar(255) NOT NULL,
+	`lastUpdated` timestamp NOT NULL ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `clientId_unique` UNIQUE INDEX(`clientId`),
+	CONSTRAINT `clientSecret_unique` UNIQUE INDEX(`clientSecret`)
+);
+
+CREATE TABLE `oauth_state` (
 	`token` varchar(255) PRIMARY KEY,
 	`provider` enum('google','discord','github') NOT NULL,
 	`callbackPath` text NOT NULL DEFAULT ('/'),
@@ -74,6 +83,13 @@ CREATE TABLE `session` (
 	`createdAt` timestamp NOT NULL DEFAULT (now())
 );
 
+CREATE TABLE `tic_tac_toe_key` (
+	`userId` varchar(255) PRIMARY KEY,
+	`publicKey` varchar(255) NOT NULL,
+	`lastUpdated` timestamp NOT NULL ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `publicKey_unique` UNIQUE INDEX(`publicKey`)
+);
+
 CREATE TABLE `user` (
 	`id` varchar(255) PRIMARY KEY,
 	`ugaMyId` varchar(255) NOT NULL,
@@ -86,12 +102,14 @@ CREATE TABLE `user` (
 	CONSTRAINT `oauthSecret_unique` UNIQUE INDEX(`oauthSecret`)
 );
 
-ALTER TABLE `authorization_code` ADD CONSTRAINT `authorization_code_clientId_user_id_fkey` FOREIGN KEY (`clientId`) REFERENCES `user`(`id`);
-ALTER TABLE `authorization_code` ADD CONSTRAINT `authorization_code_userId_user_id_fkey` FOREIGN KEY (`userId`) REFERENCES `user`(`id`);
-ALTER TABLE `discord_profile` ADD CONSTRAINT `discord_profile_accessTokenId_access_token_id_fkey` FOREIGN KEY (`accessTokenId`) REFERENCES `access_token`(`id`) ON DELETE CASCADE;
-ALTER TABLE `github_profile` ADD CONSTRAINT `github_profile_accessTokenId_access_token_id_fkey` FOREIGN KEY (`accessTokenId`) REFERENCES `access_token`(`id`) ON DELETE CASCADE;
-ALTER TABLE `points` ADD CONSTRAINT `points_githubProfileId_github_profile_id_fkey` FOREIGN KEY (`githubProfileId`) REFERENCES `github_profile`(`id`);
-ALTER TABLE `public_profile` ADD CONSTRAINT `public_profile_userId_user_id_fkey` FOREIGN KEY (`userId`) REFERENCES `user`(`id`) ON DELETE CASCADE;
-ALTER TABLE `session` ADD CONSTRAINT `session_userId_user_id_fkey` FOREIGN KEY (`userId`) REFERENCES `user`(`id`) ON DELETE CASCADE;
-ALTER TABLE `user` ADD CONSTRAINT `user_githubId_github_profile_id_fkey` FOREIGN KEY (`githubId`) REFERENCES `github_profile`(`id`) ON DELETE SET NULL;
-ALTER TABLE `user` ADD CONSTRAINT `user_discordId_discord_profile_id_fkey` FOREIGN KEY (`discordId`) REFERENCES `discord_profile`(`id`) ON DELETE SET NULL;
+ALTER TABLE `authorization_code` ADD CONSTRAINT `authorization_code_clientId_oauth_key_clientId_fkey` FOREIGN KEY (`clientId`) REFERENCES `oauth_key`(`clientId`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `authorization_code` ADD CONSTRAINT `authorization_code_userId_user_id_fkey` FOREIGN KEY (`userId`) REFERENCES `user`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `discord_profile` ADD CONSTRAINT `discord_profile_accessTokenId_access_token_id_fkey` FOREIGN KEY (`accessTokenId`) REFERENCES `access_token`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `github_profile` ADD CONSTRAINT `github_profile_accessTokenId_access_token_id_fkey` FOREIGN KEY (`accessTokenId`) REFERENCES `access_token`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `oauth_key` ADD CONSTRAINT `oauth_key_userId_user_id_fkey` FOREIGN KEY (`userId`) REFERENCES `user`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE `points` ADD CONSTRAINT `points_githubProfileId_github_profile_id_fkey` FOREIGN KEY (`githubProfileId`) REFERENCES `github_profile`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE `public_profile` ADD CONSTRAINT `public_profile_userId_user_id_fkey` FOREIGN KEY (`userId`) REFERENCES `user`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE `session` ADD CONSTRAINT `session_userId_user_id_fkey` FOREIGN KEY (`userId`) REFERENCES `user`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE `tic_tac_toe_key` ADD CONSTRAINT `tic_tac_toe_key_userId_user_id_fkey` FOREIGN KEY (`userId`) REFERENCES `user`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE `user` ADD CONSTRAINT `user_githubId_github_profile_id_fkey` FOREIGN KEY (`githubId`) REFERENCES `github_profile`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `user` ADD CONSTRAINT `user_discordId_discord_profile_id_fkey` FOREIGN KEY (`discordId`) REFERENCES `discord_profile`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;

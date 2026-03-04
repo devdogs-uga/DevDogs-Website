@@ -27,11 +27,42 @@ export const authorizationCodes = mysqlTable("authorization_code", (d) => ({
     .varchar({ length: 255 })
     .primaryKey()
     .$defaultFn(() => generateSecureString(128)),
-  clientId: d.varchar({ length: 255 }).references(() => users.id),
+  clientId: d
+    .varchar({ length: 255 })
+    .references(() => oauthKeys.clientId, { onDelete: "set null", onUpdate: "cascade" }),
   redirectUri: d.text().notNull(),
   state: d.text(),
-  userId: d.varchar({ length: 255 }).references(() => users.id),
+  userId: d
+    .varchar({ length: 255 })
+    .references(() => users.id, { onDelete: "set null", onUpdate: "cascade" }),
   createdAt: d.timestamp().defaultNow().notNull(),
+}));
+
+export const ticTacToeKeys = mysqlTable("tic_tac_toe_key", (d) => ({
+  userId: d
+    .varchar({ length: 255 })
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
+  publicKey: d.varchar({ length: 255 }).notNull().unique(),
+  lastUpdated: d.timestamp().notNull().onUpdateNow(),
+}));
+
+export const oauthKeys = mysqlTable("oauth_key", (d) => ({
+  userId: d
+    .varchar({ length: 255 })
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
+  clientId: d
+    .varchar({ length: 255 })
+    .$defaultFn(() => generateSecureString(128))
+    .notNull()
+    .unique(),
+  clientSecret: d.varchar({ length: 255 }).notNull().unique(),
+  lastUpdated: d
+    .timestamp()
+    .notNull()
+    .$defaultFn(() => new Date())
+    .onUpdateNow(),
 }));
 
 export const users = mysqlTable("user", (d) => ({
@@ -40,20 +71,21 @@ export const users = mysqlTable("user", (d) => ({
   legalName: d.varchar({ length: 255 }).notNull(),
   viewedSettings: d.boolean().notNull().default(false),
   createdAt: d.timestamp().defaultNow().notNull(),
-  oauthSecret: d.varchar({ length: 255 }).unique(),
-  githubId: d
-    .int()
-    .references(() => githubProfiles.id, { onDelete: "set null" }),
-  discordId: d
-    .varchar({ length: 255 })
-    .references(() => discordProfiles.id, { onDelete: "set null" }),
+  githubId: d.int().references(() => githubProfiles.id, {
+    onDelete: "set null",
+    onUpdate: "cascade",
+  }),
+  discordId: d.varchar({ length: 255 }).references(() => discordProfiles.id, {
+    onDelete: "set null",
+    onUpdate: "cascade",
+  }),
 }));
 
 export const publicProfiles = mysqlTable("public_profile", (d) => ({
   userId: d
     .varchar({ length: 255 })
     .primaryKey()
-    .references(() => users.id, { onDelete: "cascade" }),
+    .references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
   name: d.varchar({ length: 255 }).notNull(),
   email: d.varchar({ length: 255 }),
   image: d.text(),
@@ -77,7 +109,8 @@ export const githubProfiles = mysqlTable(
     accessTokenId: d
       .varchar({ length: 255 })
       .references(() => SERVER_ONLY_DO_NOT_LEAK_accessTokens.id, {
-        onDelete: "cascade",
+        onUpdate: "cascade",
+        onDelete: "set null",
       }),
   }),
   (t) => [uniqueIndex("login_idx").on(lower(t.login))],
@@ -89,7 +122,10 @@ export const points = mysqlTable(
     githubProfileId: d
       .int()
       .notNull()
-      .references(() => githubProfiles.id),
+      .references(() => githubProfiles.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
     year: d.int().notNull(),
     streakStart: d
       .date()
@@ -121,7 +157,8 @@ export const discordProfiles = mysqlTable(
     accessTokenId: d
       .varchar({ length: 255 })
       .references(() => SERVER_ONLY_DO_NOT_LEAK_accessTokens.id, {
-        onDelete: "cascade",
+        onUpdate: "cascade",
+        onDelete: "set null",
       }),
   }),
   (t) => [uniqueIndex("username_idx").on(lower(t.username))],
@@ -140,11 +177,11 @@ export const sessions = mysqlTable("session", (d) => ({
   userId: d
     .varchar({ length: 255 })
     .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
+    .references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
   createdAt: d.timestamp().defaultNow().notNull(),
 }));
 
-export const oauthStates = mysqlTable("oauth_states", (d) => ({
+export const oauthStates = mysqlTable("oauth_state", (d) => ({
   token: d
     .varchar({ length: 255 })
     .primaryKey()
