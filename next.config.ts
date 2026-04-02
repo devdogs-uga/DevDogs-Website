@@ -18,6 +18,11 @@ const config = {
         destination: "/settings/profile",
         permanent: false,
       },
+      {
+        source: "/figma",
+        destination: "https://www.figma.com/design/kxPCNYIOPq9flyic9EPkf7/Figma-Workshop?node-id=23-57&t=ETWjANYllL07lHyJ-1",
+        permanent: false,
+      }
     ];
   },
   turbopack: {
