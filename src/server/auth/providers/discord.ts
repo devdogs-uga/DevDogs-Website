@@ -5,26 +5,36 @@ import { env } from "~/env";
 import { db } from "~/server/db";
 import {
   discordProfiles,
+  oauthStates,
   SERVER_ONLY_DO_NOT_LEAK_accessTokens,
   users,
   type publicProfiles,
 } from "~/server/db/schema/tables";
 import { tokenResultSchema } from "../schema";
 
+const OAUTH_REDIRECT_URI = new URL("/api/auth", env.BASE_URL).toString();
+
 /**
- * Redirects the user to the consent page. If successful, they will be returned to the redirect with an authorization code in the URL search parameters.
- * @param stateToken Used to track state and prevent CSRF attacks; this token will be present in the URL search parameters with the authorization code.
- * @param redirectUri Where to navigate the user with the authorization code after consent is obtained
+ * Inserts a CSRF state token and redirects the user to Discord's OAuth consent
+ * page. On success Discord redirects back to `/api/auth` with `code` and
+ * `state` search parameters.
+ * @param callbackPath Where to send the user after profile linking completes.
  */
-export function requestAuthorization(
-  stateToken: string,
-  redirectUri: string,
-): never {
+export async function requestAuthorization(
+  callbackPath: string,
+): Promise<never> {
+  const [insertedState] = await db
+    .insert(oauthStates)
+    .values({ callbackPath, provider: "discord" })
+    .returning({ token: oauthStates.token });
+
+  if (!insertedState) throw new Error("Failed to insert OAuth state");
+
   redirect(
     "https://discord.com/api/oauth2/authorize?" +
       new URLSearchParams({
-        state: stateToken,
-        redirect_uri: redirectUri,
+        state: insertedState.token,
+        redirect_uri: OAUTH_REDIRECT_URI,
         response_type: "code",
         client_id: env.DISCORD_CLIENT_ID,
         scope: "identify guilds.join",
@@ -39,18 +49,17 @@ const profileSchema = z.object({
 });
 
 /**
- * Retrieves access tokens and profile data from the Discord API using the authorization code and links it to a user. They will also be added to the DevDogs Discord guild.
- * @param authorizationCode The authorization code obtained via OAuth
- * @param redirectUri The same `redirectUri` used in the authorization request
- * @param publicProfile The profile of the user to link the Discord profile to (we use their preferred `name` to set their Discord nickname)
- * @see `requestAuthorization(...)`
+ * Exchanges the authorization code for tokens, fetches the Discord profile,
+ * adds the user to the DevDogs guild, and links the profile to a DevDogs user.
+ * @param authorizationCode The authorization code obtained via OAuth.
+ * @param publicProfile The public profile of the user to link to (their `name`
+ *   is used to set their Discord nickname in the guild).
+ * @see `requestAuthorization`
  */
 export async function linkProfile(
   authorizationCode: string,
-  redirectUri: string,
   publicProfile: typeof publicProfiles.$inferSelect,
-) {
-  // Retrieve access/refresh tokens
+): Promise<void> {
   const tokens = await fetch("https://discord.com/api/oauth2/token", {
     method: "POST",
     headers: {
@@ -61,21 +70,20 @@ export async function linkProfile(
       client_id: env.DISCORD_CLIENT_ID,
       client_secret: env.DISCORD_CLIENT_SECRET,
       code: authorizationCode,
-      redirect_uri: redirectUri,
+      redirect_uri: OAUTH_REDIRECT_URI,
       grant_type: "authorization_code",
     }).toString(),
   })
     .then((res) => res.json())
     .then((obj) => tokenResultSchema.parseAsync(obj));
 
-  // Get Discord profile data
   const profile = await fetch("https://discord.com/api/users/@me", {
     headers: { Authorization: "Bearer " + tokens.accessToken },
   })
     .then((res) => res.json())
     .then((obj) => profileSchema.parseAsync(obj));
 
-  // Add Discord user to DevDogs Guild
+  // Add the Discord user to the DevDogs guild
   await fetch(
     `https://discord.com/api/guilds/${env.DISCORD_GUILD_ID}/members/${profile.id}`,
     {
@@ -93,16 +101,13 @@ export async function linkProfile(
     },
   );
 
-  // Insert Discord profile and access tokens, and link to user
   await db.transaction(async (tx) => {
     const [insertedRow] = await tx
       .insert(SERVER_ONLY_DO_NOT_LEAK_accessTokens)
       .values(tokens)
-      .$returningId();
+      .returning({ id: SERVER_ONLY_DO_NOT_LEAK_accessTokens.id });
 
-    if (!insertedRow) {
-      return tx.rollback();
-    }
+    if (!insertedRow) return tx.rollback();
 
     await tx
       .insert(discordProfiles)
@@ -116,11 +121,12 @@ export async function linkProfile(
 }
 
 /**
- * Unlinks a Discord profile from a user and removes them from the DevDogs guild
- * @param discordId The target Discord user ID
+ * Removes a Discord user from the DevDogs guild and unlinks their profile from
+ * the database.
+ * @param discordId The Discord user ID to remove.
  */
-export async function unlinkProfile(discordId: string) {
-  // Remove Discord user from DevDogs Guild (TODO: this isn't working; we need to fix the permissions in Discord)
+export async function unlinkProfile(discordId: string): Promise<void> {
+  // TODO: fix permissions in Discord for this to work
   const result = await fetch(
     `https://discord.com/api/guilds/${env.DISCORD_GUILD_ID}/members/${discordId}`,
     {
@@ -132,9 +138,7 @@ export async function unlinkProfile(discordId: string) {
     },
   );
 
-  // Debug:
   console.log(result);
 
-  // Remove Discord profile from database (because of cascade rules, this sets the `discordId` column on the user to `NULL` automatically)
   await db.delete(discordProfiles).where(eq(discordProfiles.id, discordId));
 }

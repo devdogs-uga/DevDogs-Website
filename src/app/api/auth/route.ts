@@ -1,4 +1,1 @@
-export {
-  handleOAuthRedirect as GET,
-  handleProfileRequest as POST,
-} from "~/server/auth";
+export { handleOAuthRedirect as GET } from "~/server/auth";

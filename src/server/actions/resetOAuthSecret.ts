@@ -20,11 +20,14 @@ export default async function resetOAuthSecret() {
       userId: session.userId,
       clientId,
       clientSecret: await bcrypt.hash(clientSecret, env.BCRYPT_ROUNDS),
+      lastUpdated: new Date(),
     })
-    .onDuplicateKeyUpdate({
+    .onConflictDoUpdate({
+      target: oauthKeys.userId,
       set: {
-        clientId: sql`values(${oauthKeys.clientId})`,
-        clientSecret: sql`values(${oauthKeys.clientSecret})`,
+        clientId: sql`excluded."clientId"`,
+        clientSecret: sql`excluded."clientSecret"`,
+        lastUpdated: sql`excluded."lastUpdated"`,
       },
     });
 

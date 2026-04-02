@@ -5,25 +5,35 @@ import { env } from "~/env";
 import { db } from "~/server/db";
 import {
   githubProfiles,
+  oauthStates,
   SERVER_ONLY_DO_NOT_LEAK_accessTokens,
   users,
 } from "~/server/db/schema/tables";
 import { tokenResultSchema } from "../schema";
 
+const OAUTH_REDIRECT_URI = new URL("/api/auth", env.BASE_URL).toString();
+
 /**
- * Redirects the user to the consent page. If successful, they will be returned to the redirect with an authorization code in the URL search parameters.
- * @param stateToken Used to track state and prevent CSRF attacks; this token will be present in the URL search parameters with the authorization code.
- * @param redirectUri Where to navigate the user with the authorization code after consent is obtained
+ * Inserts a CSRF state token and redirects the user to GitHub's OAuth consent
+ * page. On success GitHub redirects back to `/api/auth` with `code` and
+ * `state` search parameters.
+ * @param callbackPath Where to send the user after profile linking completes.
  */
-export function requestAuthorization(
-  stateToken: string,
-  redirectUri: string,
-): never {
+export async function requestAuthorization(
+  callbackPath: string,
+): Promise<never> {
+  const [insertedState] = await db
+    .insert(oauthStates)
+    .values({ callbackPath, provider: "github" })
+    .returning({ token: oauthStates.token });
+
+  if (!insertedState) throw new Error("Failed to insert OAuth state");
+
   redirect(
     "https://github.com/login/oauth/authorize?" +
       new URLSearchParams({
-        state: stateToken,
-        redirect_uri: redirectUri,
+        state: insertedState.token,
+        redirect_uri: OAUTH_REDIRECT_URI,
         response_type: "code",
         client_id: env.GITHUB_CLIENT_ID,
         scope: "write:org user:email",
@@ -38,18 +48,17 @@ const profileSchema = z.object({
 });
 
 /**
- * Retrieves access tokens and profile data from the GitHub API using the authorization code and links it to a user. They will also be added as a contributor to the DevDogs GitHub organization.
- * @param authorizationCode The authorization code obtained via OAuth
- * @param redirectUri The same `redirectUri` used in the authorization request
- * @param userId The ID of the user to associate this profile with
- * @see `requestAuthorization(...)`
+ * Exchanges the authorization code for tokens, fetches the GitHub profile,
+ * invites the user to the DevDogs organization, and links the profile to a
+ * DevDogs user.
+ * @param authorizationCode The authorization code obtained via OAuth.
+ * @param userId The ID of the DevDogs user to associate this profile with.
+ * @see `requestAuthorization`
  */
 export async function linkProfile(
   authorizationCode: string,
-  redirectUri: string,
   userId: string,
-) {
-  // Retrieve access/refresh tokens
+): Promise<void> {
   const tokens = await fetch("https://github.com/login/oauth/access_token", {
     method: "POST",
     headers: {
@@ -60,14 +69,13 @@ export async function linkProfile(
       client_id: env.GITHUB_CLIENT_ID,
       client_secret: env.GITHUB_CLIENT_SECRET,
       code: authorizationCode,
-      redirect_uri: redirectUri,
+      redirect_uri: OAUTH_REDIRECT_URI,
       grant_type: "authorization_code",
     }).toString(),
   })
     .then((res) => res.json())
     .then((obj) => tokenResultSchema.parseAsync(obj));
 
-  // Get GitHub profile data
   const profile = await fetch("https://api.github.com/user", {
     headers: {
       Authorization: "Bearer " + tokens.accessToken,
@@ -77,7 +85,7 @@ export async function linkProfile(
     .then((res) => res.json())
     .then((obj) => profileSchema.parseAsync(obj));
 
-  // Invite GitHub user as a contributor to the DevDogs organization (TODO: add team IDs)
+  // Invite the GitHub user as a contributor to the DevDogs organization
   await fetch(`https://api.github.com/orgs/${env.GITHUB_ORG}/invitations`, {
     method: "POST",
     headers: {
@@ -95,7 +103,7 @@ export async function linkProfile(
     .then(console.log)
     .catch(console.error);
 
-  // Accept organization invitation on behalf of the user
+  // Accept the organization invitation on behalf of the user
   await fetch(
     "https://api.github.com/user/memberships/orgs/" + env.GITHUB_ORG,
     {
@@ -112,24 +120,20 @@ export async function linkProfile(
     .then(console.log)
     .catch(console.error);
 
-  // Insert GitHub profile and access tokens and link to user
   await db.transaction(async (tx) => {
     const [insertedRow] = await tx
       .insert(SERVER_ONLY_DO_NOT_LEAK_accessTokens)
       .values(tokens)
-      .$returningId();
+      .returning({ id: SERVER_ONLY_DO_NOT_LEAK_accessTokens.id });
 
-    if (!insertedRow) {
-      return tx.rollback();
-    }
+    if (!insertedRow) return tx.rollback();
 
     await tx
       .insert(githubProfiles)
       .values({ ...profile, accessTokenId: insertedRow.id })
-      .onDuplicateKeyUpdate({
-        set: {
-          accessTokenId: sql`values(${githubProfiles.accessTokenId})`,
-        },
+      .onConflictDoUpdate({
+        target: githubProfiles.id,
+        set: { accessTokenId: sql`excluded."accessTokenId"` },
       });
 
     await tx
@@ -140,11 +144,11 @@ export async function linkProfile(
 }
 
 /**
- * Unlinks a GitHub profile from a user and removes them from the DevDogs organization
- * @param githubLogin The target GitHub user login (not ID)
+ * Removes a GitHub user from the DevDogs organization and unlinks their
+ * profile from the database.
+ * @param githubLogin The GitHub username (login) to remove.
  */
-export async function unlinkProfile(githubLogin: string) {
-  // Remove GitHub user from the DevDogs organization
+export async function unlinkProfile(githubLogin: string): Promise<void> {
   await fetch(
     `https://api.github.com/orgs/${env.GITHUB_ORG}/memberships/${githubLogin}`,
     {
@@ -156,6 +160,7 @@ export async function unlinkProfile(githubLogin: string) {
     },
   );
 
-  // Remove Discord profile from database (because of cascade rules, this sets the `discordId` column on the user to `NULL` automatically)
-  await db.delete(githubProfiles).where(eq(githubProfiles.login, githubLogin));
+  await db
+    .delete(githubProfiles)
+    .where(eq(githubProfiles.login, githubLogin));
 }

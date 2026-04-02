@@ -191,28 +191,30 @@ export default async function syncLeaderboard() {
     await tx
       .insert(githubProfiles)
       .values(rankedProfiles)
-      .onDuplicateKeyUpdate({
+      .onConflictDoUpdate({
+        target: githubProfiles.id,
         set: {
-          login: sql`values(${githubProfiles.login})`,
-          avatarUrl: sql`values(${githubProfiles.avatarUrl})`,
-          allTimePoints: sql`values(${githubProfiles.allTimePoints})`,
-          allTimeRanking: sql`values(${githubProfiles.allTimeRanking})`,
-          currentYearPoints: sql`values(${githubProfiles.currentYearPoints})`,
-          currentYearRanking: sql`values(${githubProfiles.currentYearRanking})`,
+          login: sql`excluded.login`,
+          avatarUrl: sql`excluded."avatarUrl"`,
+          allTimePoints: sql`excluded."allTimePoints"`,
+          allTimeRanking: sql`excluded."allTimeRanking"`,
+          currentYearPoints: sql`excluded."currentYearPoints"`,
+          currentYearRanking: sql`excluded."currentYearRanking"`,
         },
       });
 
     await tx
       .insert(pointsTable)
       .values(points.flat())
-      .onDuplicateKeyUpdate({
+      .onConflictDoUpdate({
+        target: [pointsTable.githubProfileId, pointsTable.year],
         set: {
-          academyPoints: sql`values(${pointsTable.academyPoints})`,
-          longestStreakLength: sql`values(${pointsTable.longestStreakLength})`,
-          projectPoints: sql`values(${pointsTable.projectPoints})`,
-          streakBonusPoints: sql`values(${pointsTable.streakBonusPoints})`,
-          streakLength: sql`values(${pointsTable.streakLength})`,
-          streakStart: sql`values(${pointsTable.streakStart})`,
+          academyPoints: sql`excluded."academyPoints"`,
+          longestStreakLength: sql`excluded."longestStreakLength"`,
+          projectPoints: sql`excluded."projectPoints"`,
+          streakBonusPoints: sql`excluded."streakBonusPoints"`,
+          streakLength: sql`excluded."streakLength"`,
+          streakStart: sql`excluded."streakStart"`,
         },
       });
   });

@@ -1,136 +1,84 @@
 import { redirect } from "next/navigation";
-import z from "zod";
-import { env } from "~/env";
 import { db } from "~/server/db";
 import { publicProfiles, sessions, users } from "~/server/db/schema/tables";
-import { tokenResultSchema } from "../schema";
+import { createSupabaseServerClient } from "~/server/supabase";
 
 /**
- * Redirects the user to the consent page. If successful, they will be returned to the redirect with an authorization code in the URL search parameters.
- * @param stateToken Used to track state and prevent CSRF attacks; this token will be present in the URL search parameters with the authorization code.
- * @param redirectUri Where to navigate the user with the authorization code after consent is obtained
+ * Redirects the user to `/api/auth/google`, which initiates the Supabase PKCE
+ * OAuth flow for Google sign-in. The split into a dedicated Route Handler is
+ * necessary because PKCE cookies must be written before the redirect to
+ * Supabase — an operation that is only permitted inside Route Handlers, not
+ * Server Components.
+ * @param callbackPath Where to send the user after sign-in completes.
  */
-export function requestAuthorization(
-  stateToken: string,
-  redirectUri: string,
-): never {
+export function requestAuthorization(callbackPath: string): never {
   redirect(
-    "https://accounts.google.com/o/oauth2/v2/auth?" +
-      new URLSearchParams({
-        state: stateToken,
-        redirect_uri: redirectUri,
-        client_id: env.GOOGLE_CLIENT_ID,
-        response_type: "code",
-        scope:
-          "https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email",
-        access_type: "online",
-        include_granted_scopes: "true",
-        hd: "uga.edu",
-      }).toString(),
+    "/api/auth/google?" + new URLSearchParams({ callbackPath }).toString(),
   );
 }
 
-const profileSchema = z
-  .object({
-    email: z.string(),
-    name: z.string(),
-    picture: z.string().nullish(),
-  })
-  .transform((obj) => ({
-    ugaMyId: obj.email.split("@")[0]!,
-    legalName: obj.name,
-  }));
-
 /**
- * Retrieves access tokens and profile data from the Google API using the authorization code and creates a new session. Creates a new user and public profile if they don't exist yet.
- * @param authorizationCode The authorization code obtained via OAuth
- * @param redirectUri The same `redirectUri` used in the authorization request
- * @param userAgent The user-agent (browser/device identifier) to associate with this session
- * @return The newly created session token
- * @see `requestAuthorization(...)`
+ * Exchanges a Supabase OAuth code for a DevDogs session. Creates the user and
+ * their public profile if this is their first sign-in.
+ * @param code The authorization code forwarded from the Supabase OAuth callback.
+ * @param userAgent The user-agent string to associate with the new session.
+ * @returns The newly created session token.
+ * @see `requestAuthorization`
  */
 export async function createSession(
-  authorizationCode: string,
-  redirectUri: string,
+  code: string,
   userAgent: string | null,
-) {
-  // Retrieve access token
-  const { accessToken } = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: new URLSearchParams({
-      client_id: env.GOOGLE_CLIENT_ID,
-      client_secret: env.GOOGLE_CLIENT_SECRET,
-      code: authorizationCode,
-      redirect_uri: redirectUri,
-      grant_type: "authorization_code",
-    }).toString(),
-  })
-    .then((res) => res.json())
-    .then((obj) => tokenResultSchema.parseAsync(obj));
+): Promise<string> {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.exchangeCodeForSession(code);
 
-  // Retrieve user profile data using access token
-  const profile = await fetch(
-    "https://www.googleapis.com/oauth2/v1/userinfo?alt=json",
-    {
-      headers: {
-        authorization: "Bearer " + accessToken,
-      },
-    },
-  )
-    .then((res) => res.json())
-    .then((obj) => profileSchema.parseAsync(obj));
+  if (error ?? !user?.email) {
+    throw new Error("Failed to exchange Supabase OAuth code for session");
+  }
 
-  // Create the session (use a transaction to ensure the entire operation succeeds or fails together)
-  return await db.transaction(async (tx) => {
-    // Find or create the user (and the corresponding public profile)
+  if (!user.email.endsWith("@uga.edu")) {
+    throw new Error("Only @uga.edu accounts are permitted");
+  }
+
+  const ugaMyId = user.email.split("@")[0]!;
+  const legalName =
+    (user.user_metadata.full_name as string | undefined) ??
+    (user.user_metadata.name as string | undefined) ??
+    ugaMyId;
+
+  return db.transaction(async (tx) => {
     const userId = await tx.transaction(async (tx2) => {
       const existingUser = await tx2.query.users.findFirst({
-        where: {
-          ugaMyId: {
-            eq: profile.ugaMyId,
-          },
-        },
+        where: { ugaMyId: { eq: ugaMyId } },
         columns: { id: true },
       });
 
-      if (existingUser) {
-        return existingUser.id;
-      }
+      if (existingUser) return existingUser.id;
 
-      // The user does not already exist: insert them
       const [insertedUser] = await tx2
         .insert(users)
-        .values(profile)
-        .$returningId();
+        .values({ ugaMyId, legalName })
+        .returning({ id: users.id });
 
-      if (!insertedUser) {
-        return tx2.rollback();
-      }
+      if (!insertedUser) return tx2.rollback();
 
       await tx2.insert(publicProfiles).values({
         userId: insertedUser.id,
-        name: profile.legalName.split(" ")[0] ?? "",
+        name: legalName.split(" ")[0] ?? "",
       });
 
       return insertedUser.id;
     });
 
-    // Create the session once we have the user ID
     const [insertedSession] = await tx
       .insert(sessions)
-      .values({
-        userId,
-        userAgent,
-      })
-      .$returningId();
+      .values({ userId, userAgent })
+      .returning({ token: sessions.token });
 
-    if (!insertedSession) {
-      return tx.rollback();
-    }
+    if (!insertedSession) return tx.rollback();
 
     return insertedSession.token;
   });

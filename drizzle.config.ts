@@ -3,12 +3,14 @@ import { env } from "~/env";
 
 export default {
   schema: "./src/server/db/schema/tables.ts",
-  dialect: "mysql",
+  dialect: "postgresql",
+  out: "./drizzle",
+  schemaFilter: ["public"],
   dbCredentials: {
-    host: env.MYSQL_HOST,
-    user: env.MYSQL_USER,
-    password: env.MYSQL_PASSWORD,
-    port: env.MYSQL_PORT,
-    database: env.MYSQL_DATABASE,
+    host: env.POSTGRES_HOST,
+    user: env.POSTGRES_USER,
+    password: env.POSTGRES_PASSWORD,
+    port: env.POSTGRES_PORT,
+    database: env.POSTGRES_DATABASE,
   },
 } satisfies Config;

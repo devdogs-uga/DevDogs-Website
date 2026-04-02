@@ -37,14 +37,36 @@ export const env = createEnv({
     GITHUB_TOKEN: z.string(),
     GOOGLE_CLIENT_ID: z.string(),
     GOOGLE_CLIENT_SECRET: z.string(),
-    MYSQL_USER: switchEnvironment({
-      local: z.string().default("root"),
+    SUPABASE_PORT: switchEnvironment({
+      local: z.coerce.number().min(1).max(65535).default(54321),
+      vercel: z.unknown(),
+    }),
+    SUPABASE_URL: switchEnvironment({
+      local: z
+        .url()
+        .default(
+          `http://localhost:${process.env.SUPABASE_PORT ?? "54321"}`,
+        ),
+      vercel: z.url(),
+    }),
+    SUPABASE_ANON_KEY: switchEnvironment({
+      local: z
+        .string()
+        .default(
+          // Stable default: JWT signed with Supabase's default local JWT secret.
+          // Override in .env only if you set a custom [auth.jwt.secret] in config.toml.
+          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRFA0NiK7W9fDPTt5gXbUq3Bi-p9mOH2v-e7iHqq4Q",
+        ),
       vercel: z.string(),
     }),
-    MYSQL_PASSWORD: z.string().default("password"),
-    MYSQL_HOST: z.string().default("localhost"),
-    MYSQL_PORT: z.coerce.number().min(1).max(65536).default(25060),
-    MYSQL_DATABASE: z.string().default("devdogs"),
+    POSTGRES_USER: switchEnvironment({
+      local: z.string().default("postgres"),
+      vercel: z.string(),
+    }),
+    POSTGRES_PASSWORD: z.string().default("password"),
+    POSTGRES_HOST: z.string().default("localhost"),
+    POSTGRES_PORT: z.coerce.number().min(1).max(65536).default(5432),
+    POSTGRES_DATABASE: z.string().default("devdogs"),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -95,11 +117,11 @@ export const env = createEnv({
     DISCORD_GUILD_ID: process.env.DISCORD_GUILD_ID,
     DISCORD_PUBLIC_KEY: process.env.DISCORD_PUBLIC_KEY,
     DISCORD_TOKEN: process.env.DISCORD_TOKEN,
-    MYSQL_USER: process.env.MYSQL_USER,
-    MYSQL_PASSWORD: process.env.MYSQL_PASSWORD,
-    MYSQL_HOST: process.env.MYSQL_HOST,
-    MYSQL_PORT: process.env.MYSQL_PORT,
-    MYSQL_DATABASE: process.env.MYSQL_DATABASE,
+    POSTGRES_USER: process.env.POSTGRES_USER,
+    POSTGRES_PASSWORD: process.env.POSTGRES_PASSWORD,
+    POSTGRES_HOST: process.env.POSTGRES_HOST,
+    POSTGRES_PORT: process.env.POSTGRES_PORT,
+    POSTGRES_DATABASE: process.env.POSTGRES_DATABASE,
     NODE_ENV: process.env.NODE_ENV,
     S3_PORT: process.env.S3_PORT,
     S3_REGION: process.env.S3_REGION,
@@ -107,6 +129,9 @@ export const env = createEnv({
     S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
     SHARED_AUTH_CLIENT_ID: process.env.SHARED_AUTH_CLIENT_ID,
     SHARED_AUTH_CLIENT_SECRET: process.env.SHARED_AUTH_CLIENT_SECRET,
+    SUPABASE_PORT: process.env.SUPABASE_PORT,
+    SUPABASE_URL: process.env.SUPABASE_URL,
+    SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

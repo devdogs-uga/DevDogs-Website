@@ -2,6 +2,7 @@ onlyBuiltDependencies:
   - bcrypt
   - esbuild
   - sharp
+  - supabase
   - unrs-resolver
 packages:
   - .

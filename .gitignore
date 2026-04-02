@@ -48,3 +48,7 @@ yarn-error.log*
 
 volumes/atlas/ddl.sql
 volumes/s3/*
+
+# supabase
+supabase/*
+!supabase/config.toml
