@@ -2,7 +2,7 @@
 
 import { notFound } from "next/navigation";
 import { authenticate } from "../auth";
-import { getCallbackPath } from "../utilts";
+import { getCallbackPath } from "../utils";
 
 /**
  * Begins an OAuth flow linking a Discord profile to a signed-in user.

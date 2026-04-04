@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { unauthorized } from "next/navigation";
+import { redirect } from "next/navigation";
 import {
   PiEnvelopeSimpleBold,
   PiGithubLogoBold,
@@ -14,18 +14,16 @@ import * as zfd from "zod-form-data";
 import FormButton from "~/components/FormButton";
 import IconInput from "~/components/IconInput";
 import SettingsNavigation from "~/components/SettingsNavigation";
-import { expectSession, getSession } from "~/server/auth";
+import { authenticate, expectSession, expectUserWith } from "~/server/auth";
 import { db } from "~/server/db";
-import { publicProfiles, users } from "~/server/db/schema/tables";
+import { onboarding, publicProfiles } from "~/server/db/schema/tables";
 
 async function updatePreferredName(formData: FormData) {
   "use server";
 
-  const session = await getSession({});
-
-  if (!session) {
-    unauthorized();
-  }
+  const userId = await expectSession().catch(() =>
+    authenticate("google", "/settings/profile"),
+  );
 
   const { name } = await zfd
     .formData({ name: zfd.text(z.string().max(32)) })
@@ -34,7 +32,7 @@ async function updatePreferredName(formData: FormData) {
   await db
     .update(publicProfiles)
     .set({ name })
-    .where(eq(publicProfiles.userId, session.userId));
+    .where(eq(publicProfiles.userId, userId));
 
   revalidatePath("/settings/profile");
 }
@@ -42,11 +40,9 @@ async function updatePreferredName(formData: FormData) {
 async function updateEmail(formData: FormData) {
   "use server";
 
-  const session = await getSession({});
-
-  if (!session) {
-    unauthorized();
-  }
+  const userId = await expectSession().catch(() =>
+    authenticate("google", "/settings/profile"),
+  );
 
   await db
     .update(publicProfiles)
@@ -55,7 +51,7 @@ async function updateEmail(formData: FormData) {
         .formData({ email: zfd.text(z.email()).nullish().default(null) })
         .parseAsync(formData),
     )
-    .where(eq(publicProfiles.userId, session.userId));
+    .where(eq(publicProfiles.userId, userId));
 
   revalidatePath("/settings/profile");
 }
@@ -63,11 +59,9 @@ async function updateEmail(formData: FormData) {
 async function updateProfileUrl(formData: FormData) {
   "use server";
 
-  const session = await getSession({});
-
-  if (!session) {
-    unauthorized();
-  }
+  const userId = await expectSession().catch(() =>
+    authenticate("google", "/settings/profile"),
+  );
 
   await db
     .update(publicProfiles)
@@ -76,7 +70,7 @@ async function updateProfileUrl(formData: FormData) {
         .formData({ portfolioUrl: zfd.text(z.url()).nullish().default(null) })
         .parseAsync(formData),
     )
-    .where(eq(publicProfiles.userId, session.userId));
+    .where(eq(publicProfiles.userId, userId));
 
   revalidatePath("/settings/profile");
 }
@@ -84,11 +78,9 @@ async function updateProfileUrl(formData: FormData) {
 async function updateSocialMedia(formData: FormData) {
   "use server";
 
-  const session = await getSession({});
-
-  if (!session) {
-    unauthorized();
-  }
+  const userId = await expectSession().catch(() =>
+    authenticate("google", "/settings/profile"),
+  );
 
   await db
     .update(publicProfiles)
@@ -116,28 +108,29 @@ async function updateSocialMedia(formData: FormData) {
         })
         .parseAsync(formData),
     )
-    .where(eq(publicProfiles.userId, session.userId));
+    .where(eq(publicProfiles.userId, userId));
 
   revalidatePath("/settings/profile");
 }
 
 export default async function Settings() {
-  const session = await expectSession("/settings/profile", {
-    user: {
-      with: {
-        publicProfile: true,
-        github: { columns: { login: true } },
-        discord: { columns: { username: true } },
-      },
+  const user = await expectUserWith({
+    publicProfile: true,
+    onboarding: {
+      columns: { legalName: true, ugaMyId: true, viewedSettings: true },
     },
-  });
+    githubIdentity: { columns: { identityData: true } },
+  }).catch(() => redirect("/api/auth"));
 
-  if (!session.user.viewedSettings) {
+  if (!user.onboarding?.viewedSettings) {
     await db
-      .update(users)
+      .update(onboarding)
       .set({ viewedSettings: true })
-      .where(eq(users.id, session.userId));
+      .where(eq(onboarding.userId, user.id));
   }
+
+  const legalName = user.onboarding?.legalName ?? "";
+  const ugaMyId = user.onboarding?.ugaMyId ?? "";
 
   return (
     <SettingsNavigation title="Public Profile" pathname="/settings/profile">
@@ -157,8 +150,8 @@ export default async function Settings() {
 
             <IconInput
               icon={<PiUserBold />}
-              placeholder={session.user.legalName.split(" ")[0]}
-              defaultValue={session.user.publicProfile.name}
+              placeholder={legalName.split(" ")[0]}
+              defaultValue={user.publicProfile?.name ?? ""}
               minLength={1}
               maxLength={32}
               name="name"
@@ -185,8 +178,8 @@ export default async function Settings() {
 
             <IconInput
               icon={<PiEnvelopeSimpleBold />}
-              placeholder={session.user.ugaMyId + "@uga.edu"}
-              defaultValue={session.user.publicProfile.email ?? ""}
+              placeholder={ugaMyId + "@uga.edu"}
+              defaultValue={user.publicProfile?.email ?? ""}
               maxLength={254}
               pattern="^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+\-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$"
               name="email"
@@ -213,7 +206,7 @@ export default async function Settings() {
             <IconInput
               icon={<PiGlobeBold />}
               placeholder="https://devdogsuga.com"
-              defaultValue={session.user.publicProfile.portfolioUrl ?? ""}
+              defaultValue={user.publicProfile?.portfolioUrl ?? ""}
               maxLength={254}
               name="portfolioUrl"
               type="url"
@@ -239,10 +232,8 @@ export default async function Settings() {
             <IconInput
               icon={<PiLinkedinLogoBold />}
               prefix="linkedin.com/in/"
-              placeholder={session.user.legalName
-                .replaceAll(/\W/g, "")
-                .toLocaleLowerCase()}
-              defaultValue={session.user.publicProfile.linkedinUsername ?? ""}
+              placeholder={legalName.replaceAll(/\W/g, "").toLocaleLowerCase()}
+              defaultValue={user.publicProfile?.linkedinUsername ?? ""}
               maxLength={32}
               minLength={2}
               pattern="[\w\.]{2,}"
@@ -253,10 +244,8 @@ export default async function Settings() {
             <IconInput
               icon={<PiInstagramLogoBold />}
               prefix="instagram.com/"
-              placeholder={session.user.legalName
-                .replaceAll(/\W/g, "")
-                .toLocaleLowerCase()}
-              defaultValue={session.user.publicProfile.instagramUsername ?? ""}
+              placeholder={legalName.replaceAll(/\W/g, "").toLocaleLowerCase()}
+              defaultValue={user.publicProfile?.instagramUsername ?? ""}
               maxLength={32}
               minLength={2}
               pattern="[\w\.]{2,}"
@@ -268,10 +257,10 @@ export default async function Settings() {
               icon={<PiGithubLogoBold />}
               prefix="github.com/"
               placeholder={
-                session.user.github?.login ??
-                session.user.legalName.replaceAll(/\W/g, "").toLocaleLowerCase()
+                user.githubIdentity?.identityData?.user_name ??
+                legalName.replaceAll(/\W/g, "").toLocaleLowerCase()
               }
-              defaultValue={session.user.publicProfile.githubUsername ?? ""}
+              defaultValue={user.publicProfile?.githubUsername ?? ""}
               maxLength={32}
               minLength={2}
               pattern="[\w\.]{2,}"

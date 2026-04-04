@@ -89,7 +89,6 @@ export default function Navigation({
 
   const handleScroll = useCallback(() => {
     if (navigationRef.current) {
-      console.log(navigationRef.current.getBoundingClientRect());
       setHasScrolled(navigationRef.current.getBoundingClientRect().top === 0);
     }
   }, []);

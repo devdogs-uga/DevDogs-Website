@@ -45,16 +45,6 @@
         "SHARED_AUTH_CLIENT_SECRET"
       ]
     },
-    "Next.js": {
-      "dependsOn": [],
-      "persistent": true,
-      "cache": false
-    },
-    "Drizzle-Studio": {
-      "dependsOn": [],
-      "persistent": true,
-      "cache": false
-    },
     "lint:fix": {
       "dependsOn": []
     },

@@ -11,12 +11,14 @@ import { env } from "~/env";
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies();
 
-  return createServerClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
+  return createServerClient(env.API_URL, env.PUBLISHABLE_KEY, {
     cookies: {
       getAll() {
         return cookieStore.getAll();
       },
-      setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+      setAll(
+        cookiesToSet: { name: string; value: string; options: CookieOptions }[],
+      ) {
         try {
           cookiesToSet.forEach(({ name, value, options }) =>
             cookieStore.set(name, value, options),

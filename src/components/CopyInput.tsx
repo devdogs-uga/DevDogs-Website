@@ -54,7 +54,7 @@ export default function CopyInput({ value, disabled }: Props) {
   return (
     <span className="flex max-w-md overflow-hidden rounded-sm border border-zinc-700 bg-zinc-950 ring-0 ring-zinc-400 transition-shadow focus-within:ring-1 has-disabled:cursor-not-allowed">
       <input
-        className="form-input w-full border-0 bg-zinc-950 px-3 inset-shadow-sm placeholder:text-zinc-600 focus:ring-0 disabled:pointer-events-none disabled:text-zinc-600"
+        className="form-input w-full border-0 bg-zinc-950 px-3 font-mono inset-shadow-sm placeholder:text-zinc-600 focus:ring-0 disabled:pointer-events-none disabled:text-zinc-600"
         value={value}
         disabled={disabled}
         readOnly

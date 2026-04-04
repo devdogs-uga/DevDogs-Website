@@ -1,2 +1,0 @@
--- Use this file to manually define additional tables, constrains, indices, etc.
--- Do not delete these comments.

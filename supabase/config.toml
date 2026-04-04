@@ -2,7 +2,7 @@ project_id = "devdogs-website"
 
 [api]
 enabled = true
-port = "env(SUPABASE_PORT)"
+port = 54321
 schemas = ["public", "graphql_public"]
 extra_search_path = ["public", "extensions"]
 max_rows = 1000
@@ -11,8 +11,7 @@ max_rows = 1000
 enabled = false
 
 [db]
-# Reads POSTGRES_PORT from .env — supabase:start is run via `dotenv` to load it.
-port = "env(POSTGRES_PORT)"
+port = 54322
 shadow_port = 54320
 major_version = 17
 
@@ -43,6 +42,20 @@ file_size_limit = "50MiB"
 enabled = true
 site_url = "env(BASE_URL)"
 additional_redirect_urls = ["env(BASE_URL)/api/auth/callback"]
+enable_manual_linking = true
+
+[auth.oauth_server]
+enabled = true
+
+[auth.external.discord]
+enabled = true
+client_id = "env(DISCORD_CLIENT_ID)"
+secret = "env(DISCORD_CLIENT_SECRET)"
+
+[auth.external.github]
+enabled = true
+client_id = "env(GITHUB_CLIENT_ID)"
+secret = "env(GITHUB_CLIENT_SECRET)"
 
 [auth.external.google]
 enabled = true

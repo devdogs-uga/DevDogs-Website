@@ -3,7 +3,10 @@ import { addWeeks, compareAsc, isAfter, parseISO } from "date-fns";
 import { sql } from "drizzle-orm";
 import { env } from "~/env";
 import { db } from "../db";
-import { githubProfiles, points as pointsTable } from "../db/schema/tables";
+import {
+  leaderboardProfiles,
+  points as pointsTable,
+} from "../db/schema/tables";
 import {
   type ClosedIssuesResult,
   type ProjectFields,
@@ -72,12 +75,12 @@ async function getClosedIssues(year: number) {
 }
 
 async function syncYearPoints(
-  profiles: Map<number, Required<typeof githubProfiles.$inferInsert>>,
+  profiles: Map<string, Required<typeof leaderboardProfiles.$inferInsert>>,
   year: number,
   isCurrent: boolean,
 ) {
   const closedIssues = await getClosedIssues(year);
-  const points = new Map<number, Required<typeof pointsTable.$inferInsert>>();
+  const points = new Map<string, Required<typeof pointsTable.$inferInsert>>();
 
   if (closedIssues.length < 0) {
     return [];
@@ -86,21 +89,22 @@ async function syncYearPoints(
   closedIssues.sort((a, b) => compareAsc(a.closedAt, b.closedAt));
 
   for (const { assignee, basePoints, closedAt } of closedIssues) {
-    if (!profiles.has(assignee.databaseId)) {
-      profiles.set(assignee.databaseId, {
-        id: assignee.databaseId,
-        login: assignee.login,
+    const githubId = String(assignee.databaseId);
+
+    if (!profiles.has(githubId)) {
+      profiles.set(githubId, {
+        githubId,
+        githubLogin: assignee.login,
         avatarUrl: assignee.avatarUrl,
         allTimePoints: 0,
         allTimeRanking: null,
         currentYearPoints: 0,
         currentYearRanking: null,
-        accessTokenId: null,
       });
     }
 
-    const pointsEntry = points.get(assignee.databaseId);
-    const profile = profiles.get(assignee.databaseId)!;
+    const pointsEntry = points.get(githubId);
+    const profile = profiles.get(githubId)!;
 
     profile.allTimePoints += basePoints;
 
@@ -109,9 +113,9 @@ async function syncYearPoints(
     }
 
     if (!pointsEntry) {
-      points.set(assignee.databaseId, {
+      points.set(githubId, {
         year,
-        githubProfileId: assignee.databaseId,
+        leaderboardProfileId: githubId,
         academyPoints: 0,
         streakStart: closedAt,
         streakLength: 1,
@@ -165,8 +169,8 @@ export default async function syncLeaderboard() {
   const startYear = env.DEVDOGS_EPOCH.getUTCFullYear();
   const endYear = new Date().getUTCFullYear();
   const profiles = new Map<
-    number,
-    Required<typeof githubProfiles.$inferInsert>
+    string,
+    Required<typeof leaderboardProfiles.$inferInsert>
   >();
 
   const points = await Promise.all(
@@ -189,12 +193,18 @@ export default async function syncLeaderboard() {
 
   await db.transaction(async (tx) => {
     await tx
-      .insert(githubProfiles)
-      .values(rankedProfiles)
+      .insert(leaderboardProfiles)
+      .values(
+        rankedProfiles.map((p) => ({
+          ...p,
+          allTimePoints: Math.floor(p.allTimePoints),
+          currentYearPoints: Math.floor(p.currentYearPoints),
+        })),
+      )
       .onConflictDoUpdate({
-        target: githubProfiles.id,
+        target: leaderboardProfiles.githubId,
         set: {
-          login: sql`excluded.login`,
+          githubLogin: sql`excluded."githubLogin"`,
           avatarUrl: sql`excluded."avatarUrl"`,
           allTimePoints: sql`excluded."allTimePoints"`,
           allTimeRanking: sql`excluded."allTimeRanking"`,
@@ -205,9 +215,16 @@ export default async function syncLeaderboard() {
 
     await tx
       .insert(pointsTable)
-      .values(points.flat())
+      .values(
+        points.flat().map((p) => ({
+          ...p,
+          academyPoints: Math.floor(p.academyPoints),
+          projectPoints: Math.floor(p.projectPoints),
+          streakBonusPoints: Math.floor(p.streakBonusPoints),
+        })),
+      )
       .onConflictDoUpdate({
-        target: [pointsTable.githubProfileId, pointsTable.year],
+        target: [pointsTable.leaderboardProfileId, pointsTable.year],
         set: {
           academyPoints: sql`excluded."academyPoints"`,
           longestStreakLength: sql`excluded."longestStreakLength"`,

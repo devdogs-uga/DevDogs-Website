@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import type { PropsWithChildren, ReactNode } from "react";
 import {
   PiDiscordLogoBold,
@@ -10,7 +11,7 @@ import linkDiscordProfile from "~/server/actions/linkDiscordProfile";
 import linkGithubProfile from "~/server/actions/linkGithubProfile";
 import unlinkDiscordProfile from "~/server/actions/unlinkDiscordProfile";
 import unlinkGithubProfile from "~/server/actions/unlinkGithubProfile";
-import { expectSession } from "~/server/auth";
+import { expectUserWith } from "~/server/auth";
 
 interface Props extends PropsWithChildren {
   linkProfileAction: (formData: FormData) => Promise<void>;
@@ -86,21 +87,20 @@ function AccountCard({
 }
 
 export default async function Settings() {
-  const session = await expectSession("/settings/accounts", {
-    user: {
-      with: {
-        discord: { columns: { username: true } },
-        github: { columns: { login: true } },
-      },
-    },
-  });
+  const { githubIdentity, discordIdentity } = await expectUserWith({
+    githubIdentity: { columns: { identityData: true } },
+    discordIdentity: { columns: { identityData: true } },
+  }).catch(() => redirect("/api/auth"));
+
+  const githubLogin = githubIdentity?.identityData?.user_name;
+  const discordUsername = discordIdentity?.identityData?.user_name;
 
   return (
     <SettingsNavigation title="Linked Accounts" pathname="/settings/accounts">
       <AccountCard
         friendlyName="GitHub"
         logo={<PiGithubLogoBold />}
-        identifier={session.user.github?.login}
+        identifier={githubLogin}
         linkProfileAction={linkGithubProfile}
         unlinkProfileAction={unlinkGithubProfile}
       >
@@ -119,7 +119,7 @@ export default async function Settings() {
       <AccountCard
         friendlyName="Discord"
         logo={<PiDiscordLogoBold />}
-        identifier={session.user.discord?.username}
+        identifier={discordUsername}
         linkProfileAction={linkDiscordProfile}
         unlinkProfileAction={unlinkDiscordProfile}
       >

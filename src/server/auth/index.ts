@@ -1,11 +1,9 @@
-import { cookies } from "next/headers";
-import { notFound, redirect } from "next/navigation";
-import type { NextRequest } from "next/server";
 import { db } from "~/server/db";
+import { createSupabaseServerClient } from "~/server/supabase";
 import * as discord from "./providers/discord";
 import * as github from "./providers/github";
 import * as google from "./providers/google";
-import { callbackSchema } from "./schema";
+import { redirect } from "next/navigation";
 
 /**
  * Starts the OAuth flow with a specified provider.
@@ -15,101 +13,61 @@ import { callbackSchema } from "./schema";
 export async function authenticate(
   provider: "google" | "discord" | "github",
   callbackPath: string,
-) {
+): Promise<never> {
   if (provider !== "google") {
-    await expectSession(null, {});
+    await expectSession().catch(() => redirect("/join"));
   }
 
   switch (provider) {
     case "google":
-      return google.requestAuthorization(callbackPath);
+      return await google.requestAuthorization(callbackPath);
     case "discord":
-      return discord.requestAuthorization(callbackPath);
+      return await discord.requestAuthorization(callbackPath);
     case "github":
-      return github.requestAuthorization(callbackPath);
+      return await github.requestAuthorization(callbackPath);
   }
 }
 
 /**
- * Gets the currently signed in user.
- * @param include Drizzle relational query `with` clause for the session record.
- * @returns `null` if the user is not signed in, otherwise the session.
+ * Returns the currently signed-in user with the requested relations.
+ * Throws if the user is not signed in or has no DevDogs profile.
+ * @param include Drizzle relational query `with` clause for the auth user record.
+ * @returns The auth user with the requested relations.
  */
-export async function getSession<
-  T extends (Parameters<typeof db.query.sessions.findFirst>[0] & {})["with"],
+export async function expectUserWith<
+  T extends (Parameters<typeof db.query.authUsers.findFirst>[0] & {})["with"],
 >(include: T) {
-  const token = (await cookies()).get("session")?.value;
+  const id = await expectSession();
 
-  if (!token) return null;
+  if (!id) {
+    throw new Error("Session expected but not found.");
+  }
 
-  const session = await db.query.sessions.findFirst({
-    where: { token: { eq: token } },
+  const user = await db.query.authUsers.findFirst({
+    columns: { id: true },
+    where: { id },
     with: include,
   });
 
-  return session ?? null;
+  if (!user) {
+    throw new Error("User expected but not found.");
+  }
+
+  return user;
 }
 
 /**
- * Gets the currently signed in user, redirecting or throwing if absent.
- * @param callbackPath Where to return after signing in. Pass `null` to throw
- *   a 404 instead of redirecting.
- * @param include Drizzle relational query `with` clause for the session record.
- * @returns The session.
+ * Asserts that a valid Supabase session exists.
+ * Throws if the user is not signed in.
+ * @returns The id of the signed-in user.
  */
-export async function expectSession<
-  T extends (Parameters<typeof db.query.sessions.findFirst>[0] & {})["with"],
->(callbackPath: string | null, include: T) {
-  const token = (await cookies()).get("session")?.value;
+export async function expectSession() {
+  const supabase = await createSupabaseServerClient();
+  const session = await supabase.auth.getClaims();
 
-  if (!token) {
-    if (callbackPath === null) notFound();
-    return await authenticate("google", callbackPath);
+  if (!session.data) {
+    throw new Error("Session expected but not found.");
   }
 
-  const session = await db.query.sessions.findFirst({
-    where: { token: { eq: token } },
-    with: include,
-  });
-
-  if (!session) {
-    if (callbackPath === null) notFound();
-    return await authenticate("google", callbackPath);
-  }
-
-  return session;
-}
-
-/**
- * Handles GET `/api/auth` — the OAuth callback for GitHub and Discord.
- * Google's callback is handled separately at `/api/auth/callback` (Supabase
- * PKCE flow).
- */
-export async function handleOAuthRedirect(request: NextRequest) {
-  const params = await callbackSchema
-    .parseAsync(request.nextUrl.searchParams)
-    .catch((e) => {
-      console.error(e);
-      notFound();
-    });
-
-  if (!params.state) {
-    notFound();
-  }
-
-  if (params.state.provider === "github") {
-    const session = await expectSession(null, {});
-    await github.linkProfile(params.code, session.userId);
-    redirect(params.state.callbackPath);
-  }
-
-  if (params.state.provider === "discord") {
-    const session = await expectSession(null, {
-      user: { columns: {}, with: { publicProfile: true } },
-    });
-    await discord.linkProfile(params.code, session.user.publicProfile);
-    redirect(params.state.callbackPath);
-  }
-
-  notFound();
+  return session.data.claims.sub;
 }

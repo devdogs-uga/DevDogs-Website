@@ -1,5 +1,7 @@
 import { type Config } from "drizzle-kit";
-import { env } from "~/env";
+import { loadEnvConfig } from "@next/env";
+
+loadEnvConfig(process.cwd());
 
 export default {
   schema: "./src/server/db/schema/tables.ts",
@@ -7,10 +9,6 @@ export default {
   out: "./drizzle",
   schemaFilter: ["public"],
   dbCredentials: {
-    host: env.POSTGRES_HOST,
-    user: env.POSTGRES_USER,
-    password: env.POSTGRES_PASSWORD,
-    port: env.POSTGRES_PORT,
-    database: env.POSTGRES_DATABASE,
+    url: process.env.DB_URL!,
   },
 } satisfies Config;

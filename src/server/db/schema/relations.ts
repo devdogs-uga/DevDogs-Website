@@ -2,91 +2,63 @@ import { defineRelations } from "drizzle-orm";
 import * as tables from "./tables";
 
 const relations = defineRelations(tables, (r) => ({
-  users: {
+  authUsers: {
     publicProfile: r.one.publicProfiles({
-      from: r.users.id,
+      from: r.authUsers.id,
       to: r.publicProfiles.userId,
       optional: false,
     }),
-    github: r.one.githubProfiles({
-      from: r.users.githubId,
-      to: r.githubProfiles.id,
-    }),
-    discord: r.one.discordProfiles({
-      from: r.users.discordId,
-      to: r.discordProfiles.id,
-    }),
-    oauthKey: r.one.oauthKeys({
-      from: r.users.id,
-      to: r.oauthKeys.clientId,
-    }),
-  },
-  sessions: {
-    user: r.one.users({
-      from: r.sessions.userId,
-      to: r.users.id,
+    onboarding: r.one.onboarding({
+      from: r.authUsers.id,
+      to: r.onboarding.userId,
       optional: false,
     }),
-    publicProfile: r.one.publicProfiles({
-      from: r.sessions.userId,
-      to: r.publicProfiles.userId,
-      optional: false,
+    identities: r.many.authIdentities({
+      from: r.authUsers.id,
+      to: r.authIdentities.userId,
     }),
-    oauthKey: r.one.oauthKeys({
-      from: r.sessions.userId,
-      to: r.oauthKeys.userId,
+    githubIdentity: r.one.authIdentities({
+      from: r.authUsers.id,
+      to: r.authIdentities.userId,
+      where: { provider: "github" },
+    }),
+    discordIdentity: r.one.authIdentities({
+      from: r.authUsers.id,
+      to: r.authIdentities.userId,
+      where: { provider: "discord" },
+    }),
+    leaderboardProfile: r.one.leaderboardProfiles({
+      from: r.authUsers.id.through(r.authIdentities.userId),
+      to: r.leaderboardProfiles.githubId.through(
+        r.authIdentities.providerUserId,
+      ),
     }),
   },
-  oauthKeys: {
-    client: r.one.users({
-      from: r.oauthKeys.clientId,
-      to: r.users.id,
+  authIdentities: {
+    user: r.one.authUsers({
+      from: r.authIdentities.userId,
+      to: r.authUsers.id,
+      optional: false,
     }),
   },
   publicProfiles: {
-    user: r.one.users({
+    authUser: r.one.authUsers({
       from: r.publicProfiles.userId,
-      to: r.users.id,
+      to: r.authUsers.id,
       optional: false,
     }),
   },
-  githubProfiles: {
-    user: r.one.users({
-      from: r.githubProfiles.id,
-      to: r.users.discordId,
+  onboarding: {
+    authUser: r.one.authUsers({
+      from: r.onboarding.userId,
+      to: r.authUsers.id,
+      optional: false,
     }),
-    SERVER_ONLY_DO_NOT_LEAK_authorization:
-      r.one.SERVER_ONLY_DO_NOT_LEAK_accessTokens({
-        from: r.githubProfiles.accessTokenId,
-        to: r.SERVER_ONLY_DO_NOT_LEAK_accessTokens.id,
-        optional: false,
-      }),
+  },
+  leaderboardProfiles: {
     points: r.many.points({
-      from: r.githubProfiles.id,
-      to: r.points.githubProfileId,
-    }),
-  },
-  discordProfiles: {
-    user: r.one.users({
-      from: r.discordProfiles.id,
-      to: r.users.discordId,
-      optional: false,
-    }),
-    SERVER_ONLY_DO_NOT_LEAK_authorization:
-      r.one.SERVER_ONLY_DO_NOT_LEAK_accessTokens({
-        from: r.discordProfiles.accessTokenId,
-        to: r.SERVER_ONLY_DO_NOT_LEAK_accessTokens.id,
-        optional: false,
-      }),
-  },
-  authorizationCodes: {
-    client: r.one.oauthKeys({
-      from: r.authorizationCodes.clientId,
-      to: r.oauthKeys.clientId,
-    }),
-    user: r.one.users({
-      from: r.authorizationCodes.userId,
-      to: r.users.id,
+      from: r.leaderboardProfiles.githubId,
+      to: r.points.leaderboardProfileId,
     }),
   },
 }));

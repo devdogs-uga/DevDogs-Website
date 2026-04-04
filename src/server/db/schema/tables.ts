@@ -1,85 +1,74 @@
-import { createId } from "@paralleldrive/cuid2";
 import { sql, type SQL } from "drizzle-orm";
 import { primaryKey } from "drizzle-orm/pg-core";
 import {
+  pgSchema,
   pgTable,
-  pgEnum,
   uniqueIndex,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
-import { generateSecureString } from "~/server/utilts";
 
-function lower(col: AnyPgColumn): SQL {
-  return sql`(lower(${col}))`;
+export function lower(col: AnyPgColumn): SQL {
+  return sql`lower(${col})`;
 }
 
-export const providerEnum = pgEnum("provider", ["google", "discord", "github"]);
+// ---------------------------------------------------------------------------
+// Supabase auth schema — read-only references for cross-schema FK constraints
+// and relational queries. drizzle-kit is configured with schemaFilter: ["public"]
+// so it will not attempt to create or migrate anything in the auth schema.
+//
+// Shape validated against Supabase GoTrue v2 (postgres-migrations ≥ 20221208132122).
+// Run `drizzle-kit pull --config drizzle.auth.config.ts` in CI to detect drift.
+// ---------------------------------------------------------------------------
+const authSchema = pgSchema("auth");
 
-export const SERVER_ONLY_DO_NOT_LEAK_accessTokens = pgTable(
-  "access_token",
-  (d) => ({
-    id: d.varchar({ length: 255 }).primaryKey().$defaultFn(createId),
-    accessToken: d.text().notNull(),
-    accessTokenExpires: d.timestamp(),
-    refreshToken: d.text(),
-  }),
-);
-
-export const authorizationCodes = pgTable("authorization_code", (d) => ({
-  code: d
-    .varchar({ length: 255 })
-    .primaryKey()
-    .$defaultFn(() => generateSecureString(128)),
-  clientId: d.varchar({ length: 255 }).references(() => oauthKeys.clientId, {
-    onDelete: "set null",
-    onUpdate: "cascade",
-  }),
-  redirectUri: d.text().notNull(),
-  state: d.text(),
-  userId: d
-    .varchar({ length: 255 })
-    .references(() => users.id, { onDelete: "set null", onUpdate: "cascade" }),
-  createdAt: d.timestamp().defaultNow().notNull(),
+export const authUsers = authSchema.table("users", (d) => ({
+  id: d.uuid().primaryKey(),
 }));
 
-export const oauthKeys = pgTable("oauth_key", (d) => ({
-  userId: d
-    .varchar({ length: 255 })
-    .primaryKey()
-    .references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
-  clientId: d
-    .varchar({ length: 255 })
-    .$defaultFn(() => generateSecureString(128))
-    .notNull()
-    .unique(),
-  clientSecret: d.varchar({ length: 255 }).notNull().unique(),
-  lastUpdated: d
-    .timestamp()
-    .notNull()
-    .$defaultFn(() => new Date()),
-}));
+/**
+ * Typed shape for the `identity_data` JSONB column in `auth.identities`.
+ * The GoTrue server populates this from the OAuth provider's user-info
+ * response. Field names vary by provider; all fields are optional.
+ * `sub` and `user_name` are present for GitHub and Discord.
+ *
+ * Note: `@supabase/auth-js` types `identity_data` as `{ [key: string]: any }`,
+ * so there is no upstream type to import — this definition is maintained here.
+ */
+export type IdentityData = {
+  /** Provider user ID — mirrors `provider_user_id`. */
+  sub?: string;
+  /** Provider username/handle (GitHub login, Discord username, etc.). */
+  user_name?: string;
+  /** Display name. */
+  name?: string;
+  avatar_url?: string;
+  email?: string;
+};
 
-export const users = pgTable("user", (d) => ({
-  id: d.varchar({ length: 255 }).primaryKey().$defaultFn(createId),
-  ugaMyId: d.varchar({ length: 255 }).notNull(),
-  legalName: d.varchar({ length: 255 }).notNull(),
-  viewedSettings: d.boolean().notNull().default(false),
-  createdAt: d.timestamp().defaultNow().notNull(),
-  githubId: d.integer().references(() => githubProfiles.id, {
-    onDelete: "set null",
-    onUpdate: "cascade",
-  }),
-  discordId: d.varchar({ length: 255 }).references(() => discordProfiles.id, {
-    onDelete: "set null",
-    onUpdate: "cascade",
-  }),
+/**
+ * Read-only reference to `auth.identities`.
+ * Each row represents one OAuth provider linked to a Supabase user.
+ * `providerUserId` is the provider's own numeric/string ID for the account
+ * (e.g. the GitHub numeric user ID, or the Discord snowflake ID).
+ * `identityData` is the raw JSON returned by the provider — field names vary
+ * per provider but typically include `user_name`/`name`/`avatar_url`.
+ */
+export const authIdentities = authSchema.table("identities", (d) => ({
+  id: d.uuid().primaryKey(),
+  userId: d.uuid("user_id").notNull(),
+  provider: d.text().notNull(),
+  providerUserId: d.text("provider_id").notNull(),
+  identityData: d.jsonb("identity_data").$type<IdentityData>(),
 }));
 
 export const publicProfiles = pgTable("public_profile", (d) => ({
   userId: d
-    .varchar({ length: 255 })
+    .uuid()
     .primaryKey()
-    .references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
+    .references(() => authUsers.id, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
   name: d.varchar({ length: 255 }).notNull(),
   email: d.varchar({ length: 255 }),
   image: d.text(),
@@ -90,33 +79,50 @@ export const publicProfiles = pgTable("public_profile", (d) => ({
   portfolioUrl: d.text(),
 }));
 
-export const githubProfiles = pgTable(
-  "github_profile",
+export const onboarding = pgTable("onboarding", (d) => ({
+  userId: d
+    .uuid()
+    .primaryKey()
+    .references(() => authUsers.id, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
+  ugaMyId: d.varchar({ length: 255 }).notNull(),
+  legalName: d.varchar({ length: 255 }).notNull(),
+  viewedSettings: d.boolean().notNull().default(false),
+  // Supabase OAuth server client ID — assigned by Supabase when the client is
+  // created via the admin API. The secret is never stored here; it is returned
+  // once by the admin API and shown to the user immediately.
+  oauthClientId: d.varchar({ length: 255 }).unique(),
+}));
+
+/**
+ * One row per GitHub contributor to the DevDogs organisation.
+ * Populated and updated by `syncLeaderboard`. The primary key is the GitHub
+ * numeric user ID stored as `varchar` so it can be joined directly against
+ * `auth.identities.provider_user_id` without a cast.
+ */
+export const leaderboardProfiles = pgTable(
+  "leaderboard_profile",
   (d) => ({
-    id: d.integer().primaryKey(),
-    login: d.varchar({ length: 255 }).unique().notNull(),
+    githubId: d.varchar({ length: 255 }).primaryKey(),
+    githubLogin: d.varchar({ length: 255 }).unique().notNull(),
     avatarUrl: d.text(),
     allTimePoints: d.integer().notNull().default(0),
     allTimeRanking: d.integer(),
     currentYearPoints: d.integer().notNull().default(0),
     currentYearRanking: d.integer(),
-    accessTokenId: d
-      .varchar({ length: 255 })
-      .references(() => SERVER_ONLY_DO_NOT_LEAK_accessTokens.id, {
-        onUpdate: "cascade",
-        onDelete: "set null",
-      }),
   }),
-  (t) => [uniqueIndex("login_idx").on(lower(t.login))],
+  (t) => [uniqueIndex("login_idx").on(lower(t.githubLogin))],
 );
 
 export const points = pgTable(
   "points",
   (d) => ({
-    githubProfileId: d
-      .integer()
+    leaderboardProfileId: d
+      .varchar({ length: 255 })
       .notNull()
-      .references(() => githubProfiles.id, {
+      .references(() => leaderboardProfiles.githubId, {
         onDelete: "cascade",
         onUpdate: "cascade",
       }),
@@ -138,48 +144,5 @@ export const points = pgTable(
           sql`${points.projectPoints} + ${points.streakBonusPoints} + ${points.academyPoints}`,
       ),
   }),
-  (t) => [primaryKey({ columns: [t.githubProfileId, t.year] })],
+  (t) => [primaryKey({ columns: [t.leaderboardProfileId, t.year] })],
 );
-
-export const discordProfiles = pgTable(
-  "discord_profile",
-  (d) => ({
-    id: d.varchar({ length: 255 }).primaryKey(),
-    username: d.varchar({ length: 255 }).notNull(),
-    avatar: d.varchar({ length: 255 }),
-    accessTokenId: d
-      .varchar({ length: 255 })
-      .references(() => SERVER_ONLY_DO_NOT_LEAK_accessTokens.id, {
-        onUpdate: "cascade",
-        onDelete: "set null",
-      }),
-  }),
-  (t) => [uniqueIndex("username_idx").on(lower(t.username))],
-);
-
-export const sessions = pgTable("session", (d) => ({
-  token: d
-    .varchar({ length: 255 })
-    .primaryKey()
-    .$defaultFn(() =>
-      Buffer.from(crypto.getRandomValues(new Uint8Array(128))).toString(
-        "base64",
-      ),
-    ),
-  userAgent: d.text(),
-  userId: d
-    .varchar({ length: 255 })
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
-  createdAt: d.timestamp().defaultNow().notNull(),
-}));
-
-export const oauthStates = pgTable("oauth_state", (d) => ({
-  token: d
-    .varchar({ length: 255 })
-    .primaryKey()
-    .$defaultFn(() => generateSecureString(128)),
-  provider: providerEnum().notNull(),
-  callbackPath: d.text().notNull().default("/"),
-  createdAt: d.timestamp().defaultNow().notNull(),
-}));

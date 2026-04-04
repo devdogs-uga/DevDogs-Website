@@ -11,7 +11,7 @@ import FormButton from "~/components/FormButton";
 import LinkButton from "~/components/LinkButton";
 import linkDiscordProfile from "~/server/actions/linkDiscordProfile";
 import linkGithubProfile from "~/server/actions/linkGithubProfile";
-import { expectSession } from "~/server/auth";
+import { expectUserWith } from "~/server/auth";
 
 interface Props extends PropsWithChildren {
   heading: ReactNode;
@@ -43,13 +43,16 @@ function OnboardingStep({ complete, children, heading }: Props) {
 }
 
 export default async function Join() {
-  const session = await expectSession("/join", {
-    user: { with: { publicProfile: true } },
-  });
+  const user = await expectUserWith({
+    githubIdentity: { columns: { id: true } },
+    discordIdentity: { columns: { id: true } },
+    onboarding: { columns: { viewedSettings: true } },
+    publicProfile: { columns: { name: true } },
+  }).catch(() => redirect("/api/auth"));
 
-  const githubStepComplete = session.user.githubId !== null;
-  const discordStepComplete = session.user.discordId !== null;
-  const profileStepComplete = session.user.viewedSettings;
+  const githubStepComplete = !!user.githubIdentity;
+  const discordStepComplete = !!user.discordIdentity;
+  const profileStepComplete = user.onboarding?.viewedSettings;
 
   if (githubStepComplete && discordStepComplete && profileStepComplete) {
     redirect("/");
@@ -60,9 +63,7 @@ export default async function Join() {
       <header className="pb-10 text-center">
         <h2 className="pb-4 text-3xl font-bold sm:text-4xl">
           Hi there,{" "}
-          <span className="text-rose-400">
-            {session.user.publicProfile.name}
-          </span>
+          <span className="text-rose-400">{user.publicProfile.name}</span>
         </h2>
         <p className="mx-auto max-w-sm text-lg font-medium text-zinc-400 sm:max-w-prose sm:text-xl">
           {githubStepComplete && discordStepComplete && profileStepComplete ? (

@@ -1,45 +1,47 @@
-import { eq } from "drizzle-orm";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import z from "zod";
 import { env } from "~/env";
-import { db } from "~/server/db";
-import {
-  discordProfiles,
-  oauthStates,
-  SERVER_ONLY_DO_NOT_LEAK_accessTokens,
-  users,
-  type publicProfiles,
-} from "~/server/db/schema/tables";
-import { tokenResultSchema } from "../schema";
+import { createSupabaseServerClient } from "~/server/supabase";
 
-const OAUTH_REDIRECT_URI = new URL("/api/auth", env.BASE_URL).toString();
+const CALLBACK_URL = new URL("/api/auth/callback", env.BASE_URL).toString();
 
-/**
- * Inserts a CSRF state token and redirects the user to Discord's OAuth consent
- * page. On success Discord redirects back to `/api/auth` with `code` and
- * `state` search parameters.
- * @param callbackPath Where to send the user after profile linking completes.
- */
 export async function requestAuthorization(
   callbackPath: string,
 ): Promise<never> {
-  const [insertedState] = await db
-    .insert(oauthStates)
-    .values({ callbackPath, provider: "discord" })
-    .returning({ token: oauthStates.token });
+  const cookieStore = await cookies();
+  const supabase = await createSupabaseServerClient();
 
-  if (!insertedState) throw new Error("Failed to insert OAuth state");
+  // Store the post-auth destination in a short-lived cookie so the callback
+  // handler can redirect there after the Supabase round-trip.
+  cookieStore.set("auth_callback_path", callbackPath, {
+    httpOnly: true,
+    sameSite: "lax",
+    maxAge: 600,
+    path: "/",
+  });
 
-  redirect(
-    "https://discord.com/api/oauth2/authorize?" +
-      new URLSearchParams({
-        state: insertedState.token,
-        redirect_uri: OAUTH_REDIRECT_URI,
-        response_type: "code",
-        client_id: env.DISCORD_CLIENT_ID,
-        scope: "identify guilds.join",
-      }).toString(),
-  );
+  cookieStore.set("auth_intent", "link:discord", {
+    httpOnly: true,
+    sameSite: "lax",
+    maxAge: 600,
+    path: "/",
+  });
+
+  const { data, error } = await supabase.auth.linkIdentity({
+    provider: "discord",
+    options: {
+      redirectTo: CALLBACK_URL,
+      skipBrowserRedirect: true,
+      scopes: "identify guilds.join",
+    },
+  });
+
+  if (error ?? !data.url) {
+    throw new Error("Failed to initiate Discord OAuth via Supabase");
+  }
+
+  redirect(data.url);
 }
 
 const profileSchema = z.object({
@@ -49,36 +51,19 @@ const profileSchema = z.object({
 });
 
 /**
- * Exchanges the authorization code for tokens, fetches the Discord profile,
- * adds the user to the DevDogs guild, and links the profile to a DevDogs user.
- * @param authorizationCode The authorization code obtained via OAuth.
- * @param publicProfile The public profile of the user to link to (their `name`
- *   is used to set their Discord nickname in the guild).
+ * Fetches the Discord profile and adds the user to the DevDogs guild.
+ * The identity link itself is managed by Supabase (`auth.identities`).
+ * @param accessToken The Discord access token from the Supabase OAuth session.
+ * @param publicProfile The public profile of the user (their `name` is used to
+ *   set their Discord nickname in the guild).
  * @see `requestAuthorization`
  */
 export async function linkProfile(
-  authorizationCode: string,
-  publicProfile: typeof publicProfiles.$inferSelect,
+  accessToken: string,
+  publicProfile: { name: string },
 ): Promise<void> {
-  const tokens = await fetch("https://discord.com/api/oauth2/token", {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: new URLSearchParams({
-      client_id: env.DISCORD_CLIENT_ID,
-      client_secret: env.DISCORD_CLIENT_SECRET,
-      code: authorizationCode,
-      redirect_uri: OAUTH_REDIRECT_URI,
-      grant_type: "authorization_code",
-    }).toString(),
-  })
-    .then((res) => res.json())
-    .then((obj) => tokenResultSchema.parseAsync(obj));
-
   const profile = await fetch("https://discord.com/api/users/@me", {
-    headers: { Authorization: "Bearer " + tokens.accessToken },
+    headers: { Authorization: "Bearer " + accessToken },
   })
     .then((res) => res.json())
     .then((obj) => profileSchema.parseAsync(obj));
@@ -94,41 +79,37 @@ export async function linkProfile(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        access_token: tokens.accessToken,
+        access_token: accessToken,
         nick: publicProfile.name,
         roles: [],
       }),
     },
   );
-
-  await db.transaction(async (tx) => {
-    const [insertedRow] = await tx
-      .insert(SERVER_ONLY_DO_NOT_LEAK_accessTokens)
-      .values(tokens)
-      .returning({ id: SERVER_ONLY_DO_NOT_LEAK_accessTokens.id });
-
-    if (!insertedRow) return tx.rollback();
-
-    await tx
-      .insert(discordProfiles)
-      .values({ ...profile, accessTokenId: insertedRow.id });
-
-    await tx
-      .update(users)
-      .set({ discordId: profile.id })
-      .where(eq(users.id, publicProfile.userId));
-  });
 }
 
 /**
- * Removes a Discord user from the DevDogs guild and unlinks their profile from
- * the database.
- * @param discordId The Discord user ID to remove.
+ * Removes a user's Discord identity from Supabase and removes them from the
+ * DevDogs guild. The `provider_user_id` on the identity is the Discord
+ * snowflake ID used for the guild API call.
  */
-export async function unlinkProfile(discordId: string): Promise<void> {
+export async function unlinkProfile(): Promise<void> {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase.auth.getUserIdentities();
+
+  const identity = data?.identities.find((i) => i.provider === "discord");
+
+  if (!identity) return;
+
+  // The Discord snowflake ID is stored as `identity_data.sub` by Supabase.
+  const discordUserId: unknown = identity.identity_data?.sub;
+
+  if (typeof discordUserId !== "string") {
+    throw new Error("Discord identity is missing sub. Unlink aborted.");
+  }
+
   // TODO: fix permissions in Discord for this to work
   const result = await fetch(
-    `https://discord.com/api/guilds/${env.DISCORD_GUILD_ID}/members/${discordId}`,
+    `https://discord.com/api/guilds/${env.DISCORD_GUILD_ID}/members/${discordUserId}`,
     {
       method: "DELETE",
       headers: {
@@ -138,7 +119,11 @@ export async function unlinkProfile(discordId: string): Promise<void> {
     },
   );
 
-  console.log(result);
+  if (!result.ok) {
+    throw new Error(
+      `Failed to remove user from Discord guild (${result.status}). Unlink aborted.`,
+    );
+  }
 
-  await db.delete(discordProfiles).where(eq(discordProfiles.id, discordId));
+  await supabase.auth.unlinkIdentity(identity);
 }

@@ -4,14 +4,14 @@ import Marquee from "react-fast-marquee";
 import { PiConfettiBold, PiGearBold, PiSignOutBold } from "react-icons/pi";
 import Avatar from "~/components/Avatar";
 import signOut from "~/server/actions/signOut";
-import {
-  type githubProfiles,
-  type publicProfiles,
+import type {
+  leaderboardProfiles,
+  publicProfiles,
 } from "~/server/db/schema/tables";
 
 interface Props {
   publicProfile: typeof publicProfiles.$inferSelect;
-  githubProfile: typeof githubProfiles.$inferSelect | null | undefined;
+  githubProfile: typeof leaderboardProfiles.$inferSelect | null | undefined;
   streak:
     | {
         length: number;

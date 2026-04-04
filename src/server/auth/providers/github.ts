@@ -1,44 +1,54 @@
-import { eq, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import z from "zod";
 import { env } from "~/env";
 import { db } from "~/server/db";
-import {
-  githubProfiles,
-  oauthStates,
-  SERVER_ONLY_DO_NOT_LEAK_accessTokens,
-  users,
-} from "~/server/db/schema/tables";
-import { tokenResultSchema } from "../schema";
+import { leaderboardProfiles } from "~/server/db/schema/tables";
+import { createSupabaseServerClient } from "~/server/supabase";
 
-const OAUTH_REDIRECT_URI = new URL("/api/auth", env.BASE_URL).toString();
+const CALLBACK_URL = new URL("/api/auth/callback", env.BASE_URL).toString();
 
-/**
- * Inserts a CSRF state token and redirects the user to GitHub's OAuth consent
- * page. On success GitHub redirects back to `/api/auth` with `code` and
- * `state` search parameters.
- * @param callbackPath Where to send the user after profile linking completes.
- */
 export async function requestAuthorization(
   callbackPath: string,
 ): Promise<never> {
-  const [insertedState] = await db
-    .insert(oauthStates)
-    .values({ callbackPath, provider: "github" })
-    .returning({ token: oauthStates.token });
+  const cookieStore = await cookies();
+  const supabase = await createSupabaseServerClient();
 
-  if (!insertedState) throw new Error("Failed to insert OAuth state");
+  // Store the post-auth destination in a short-lived cookie so the callback
+  // handler can redirect there after the Supabase round-trip.
+  cookieStore.set("auth_callback_path", callbackPath, {
+    httpOnly: true,
+    sameSite: "lax",
+    maxAge: 600,
+    path: "/",
+  });
 
-  redirect(
-    "https://github.com/login/oauth/authorize?" +
-      new URLSearchParams({
-        state: insertedState.token,
-        redirect_uri: OAUTH_REDIRECT_URI,
-        response_type: "code",
-        client_id: env.GITHUB_CLIENT_ID,
-        scope: "write:org user:email",
-      }).toString(),
-  );
+  cookieStore.set("auth_intent", "link:github", {
+    httpOnly: true,
+    sameSite: "lax",
+    maxAge: 600,
+    path: "/",
+  });
+
+  const { data, error } = await supabase.auth.linkIdentity({
+    provider: "github",
+    options: {
+      redirectTo: CALLBACK_URL,
+      skipBrowserRedirect: true,
+      scopes: "write:org user:email",
+      queryParams: {
+        access_type: "offline",
+      },
+    },
+  });
+
+  if (error ?? !data.url) {
+    console.error({ data, error });
+    throw new Error("Failed to initiate GitHub OAuth via Supabase");
+  }
+
+  redirect(data.url);
 }
 
 const profileSchema = z.object({
@@ -48,37 +58,16 @@ const profileSchema = z.object({
 });
 
 /**
- * Exchanges the authorization code for tokens, fetches the GitHub profile,
- * invites the user to the DevDogs organization, and links the profile to a
- * DevDogs user.
- * @param authorizationCode The authorization code obtained via OAuth.
- * @param userId The ID of the DevDogs user to associate this profile with.
+ * Fetches the GitHub profile, invites the user to the DevDogs organization,
+ * and upserts the profile into the `github_profile` table. The identity link
+ * itself is managed by Supabase (`auth.identities`).
+ * @param accessToken The GitHub access token from the Supabase OAuth session.
  * @see `requestAuthorization`
  */
-export async function linkProfile(
-  authorizationCode: string,
-  userId: string,
-): Promise<void> {
-  const tokens = await fetch("https://github.com/login/oauth/access_token", {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: new URLSearchParams({
-      client_id: env.GITHUB_CLIENT_ID,
-      client_secret: env.GITHUB_CLIENT_SECRET,
-      code: authorizationCode,
-      redirect_uri: OAUTH_REDIRECT_URI,
-      grant_type: "authorization_code",
-    }).toString(),
-  })
-    .then((res) => res.json())
-    .then((obj) => tokenResultSchema.parseAsync(obj));
-
+export async function linkProfile(accessToken: string): Promise<void> {
   const profile = await fetch("https://api.github.com/user", {
     headers: {
-      Authorization: "Bearer " + tokens.accessToken,
+      Authorization: "Bearer " + accessToken,
       "X-GitHub-Api-Version": "2022-11-28",
     },
   })
@@ -109,7 +98,7 @@ export async function linkProfile(
     {
       method: "PATCH",
       headers: {
-        Authorization: "Bearer " + tokens.accessToken,
+        Authorization: "Bearer " + accessToken,
         Accept: "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
       },
@@ -120,37 +109,44 @@ export async function linkProfile(
     .then(console.log)
     .catch(console.error);
 
-  await db.transaction(async (tx) => {
-    const [insertedRow] = await tx
-      .insert(SERVER_ONLY_DO_NOT_LEAK_accessTokens)
-      .values(tokens)
-      .returning({ id: SERVER_ONLY_DO_NOT_LEAK_accessTokens.id });
-
-    if (!insertedRow) return tx.rollback();
-
-    await tx
-      .insert(githubProfiles)
-      .values({ ...profile, accessTokenId: insertedRow.id })
-      .onConflictDoUpdate({
-        target: githubProfiles.id,
-        set: { accessTokenId: sql`excluded."accessTokenId"` },
-      });
-
-    await tx
-      .update(users)
-      .set({ githubId: profile.id })
-      .where(eq(users.id, userId));
-  });
+  await db
+    .insert(leaderboardProfiles)
+    .values({
+      githubId: String(profile.id),
+      githubLogin: profile.login,
+      avatarUrl: profile.avatar_url,
+    })
+    .onConflictDoUpdate({
+      target: leaderboardProfiles.githubId,
+      set: {
+        githubLogin: sql`excluded."githubLogin"`,
+        avatarUrl: sql`excluded."avatarUrl"`,
+      },
+    });
 }
 
 /**
  * Removes a GitHub user from the DevDogs organization and unlinks their
- * profile from the database.
- * @param githubLogin The GitHub username (login) to remove.
+ * GitHub identity from Supabase. The `github_profile` row is preserved so
+ * that leaderboard data is not lost.
+ * The GitHub login is read from `identity_data.user_name`, stored by Supabase
+ * at link time.
  */
-export async function unlinkProfile(githubLogin: string): Promise<void> {
-  await fetch(
-    `https://api.github.com/orgs/${env.GITHUB_ORG}/memberships/${githubLogin}`,
+export async function unlinkProfile(): Promise<void> {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase.auth.getUserIdentities();
+  const identity = data?.identities.find((i) => i.provider === "github");
+
+  if (!identity) return;
+
+  const login: unknown = identity.identity_data?.user_name;
+
+  if (typeof login !== "string") {
+    throw new Error("GitHub identity is missing user_name. Unlink aborted.");
+  }
+
+  const result = await fetch(
+    `https://api.github.com/orgs/${env.GITHUB_ORG}/memberships/${login}`,
     {
       method: "DELETE",
       headers: {
@@ -160,7 +156,11 @@ export async function unlinkProfile(githubLogin: string): Promise<void> {
     },
   );
 
-  await db
-    .delete(githubProfiles)
-    .where(eq(githubProfiles.login, githubLogin));
+  if (!result.ok) {
+    throw new Error(
+      `Failed to remove user from GitHub org (${result.status}). Unlink aborted.`,
+    );
+  }
+
+  await supabase.auth.unlinkIdentity(identity);
 }
