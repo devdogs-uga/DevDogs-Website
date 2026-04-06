@@ -21,8 +21,23 @@ export function lower(col: AnyPgColumn): SQL {
 // ---------------------------------------------------------------------------
 const authSchema = pgSchema("auth");
 
+/**
+ * Typed shape for the `raw_user_meta_data` JSONB column in `auth.users`.
+ * Populated from the Google OAuth user-info response on first sign-in.
+ */
+export type UserMetaData = {
+  /** Google display name. */
+  full_name?: string;
+  /** Fallback display name field. */
+  name?: string;
+  /** Avatar URL from the OAuth provider. */
+  avatar_url?: string;
+};
+
 export const authUsers = authSchema.table("users", (d) => ({
   id: d.uuid().primaryKey(),
+  email: d.text(),
+  rawUserMetaData: d.jsonb("raw_user_meta_data").$type<UserMetaData>(),
 }));
 
 /**
@@ -61,7 +76,19 @@ export const authIdentities = authSchema.table("identities", (d) => ({
   identityData: d.jsonb("identity_data").$type<IdentityData>(),
 }));
 
-export const publicProfiles = pgTable("public_profile", (d) => ({
+/**
+ * Merged profile table — replaces the former `public_profile` and `onboarding`
+ * tables.
+ *
+ * `preferredName` is stored here (not in `auth.users`) because Supabase
+ * re-merges OAuth provider data on every sign-in, which would overwrite any
+ * preferred name stored in `raw_user_meta_data`. A `custom_access_token` hook
+ * (see `supabase/hooks/custom_access_token.sql`) injects `preferredName` into
+ * the OIDC `name` claim so OAuth clients always see the up-to-date value.
+ *
+ * Email is read directly from `auth.users.email`.
+ */
+export const profiles = pgTable("profile", (d) => ({
   userId: d
     .uuid()
     .primaryKey()
@@ -69,31 +96,28 @@ export const publicProfiles = pgTable("public_profile", (d) => ({
       onDelete: "cascade",
       onUpdate: "cascade",
     }),
-  name: d.varchar({ length: 255 }).notNull(),
-  email: d.varchar({ length: 255 }),
-  image: d.text(),
-  githubUsername: d.varchar({ length: 255 }),
-  discordUsername: d.varchar({ length: 255 }),
-  linkedinUsername: d.varchar({ length: 255 }),
-  instagramUsername: d.varchar({ length: 255 }),
-  portfolioUrl: d.text(),
-}));
-
-export const onboarding = pgTable("onboarding", (d) => ({
-  userId: d
-    .uuid()
-    .primaryKey()
-    .references(() => authUsers.id, {
-      onDelete: "cascade",
-      onUpdate: "cascade",
-    }),
-  ugaMyId: d.varchar({ length: 255 }).notNull(),
-  legalName: d.varchar({ length: 255 }).notNull(),
+  preferredName: d.varchar({ length: 255 }).notNull(),
+  showGithub: d.boolean().notNull().default(false),
+  showDiscord: d.boolean().notNull().default(false),
   viewedSettings: d.boolean().notNull().default(false),
   // Supabase OAuth server client ID — assigned by Supabase when the client is
   // created via the admin API. The secret is never stored here; it is returned
   // once by the admin API and shown to the user immediately.
   oauthClientId: d.varchar({ length: 255 }).unique(),
+}));
+
+export const profileLinks = pgTable("profile_link", (d) => ({
+  id: d.uuid().primaryKey().defaultRandom(),
+  userId: d
+    .uuid("user_id")
+    .notNull()
+    .references(() => profiles.userId, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
+  url: d.text().notNull(),
+  title: d.varchar({ length: 64 }).notNull(),
+  createdAt: d.timestamp().defaultNow(),
 }));
 
 /**

@@ -1,15 +1,13 @@
 import Link from "next/link";
 import {
   PiArrowRightBold,
-  PiLink,
-  PiDotsThreeVertical,
-  PiInstagramLogoFill,
-  PiGithubLogoFill,
-  PiLinkedinLogoFill,
   PiEnvelopeSimpleFill,
+  PiGithubLogoFill,
+  PiInstagramLogoFill,
+  PiLinkedinLogoFill
 } from "react-icons/pi";
 import LinkButton from "~/components/LinkButton";
-import Share from "~/components/Share";
+import ShareButton from "./ShareButton";
 
 export default function LinkInBio() {
   return (
@@ -44,60 +42,26 @@ export default function LinkInBio() {
       </div>
 
       <div className="flex w-full flex-col gap-3">
-        <Link
+        <ShareButton
           href="https://uga.campuslabs.com/engage/organization/devdogs"
-          target="_blank"
-          className="flex items-center justify-between gap-2 rounded-sm bg-rose-200 px-4 py-2 text-black hover:underline"
-        >
-          <PiLink />
-          <span className="w-full text-center">
-            UGA Involvement Network Listing
-          </span>
-          <Share>
-            <button className="-m-1 rounded-full p-1 transition-colors hover:bg-rose-300">
-              <PiDotsThreeVertical />
-            </button>
-          </Share>
-        </Link>
-        <Link
+          title="UGA Involvement Network Listing"
+          shareText=""
+        />
+        <ShareButton
           href="https://gdg.community.dev/gdg-on-campus-university-of-georgia-athens-united-states/"
-          target="_blank"
-          className="flex items-center justify-between gap-2 rounded-sm bg-rose-200 px-4 py-2 text-black hover:underline"
-        >
-          <PiLink />
-          <span className="w-full text-center">Google DGC: UGA Listing</span>
-          <Share>
-            <button className="-m-1 rounded-full p-1 transition-colors hover:bg-rose-300">
-              <PiDotsThreeVertical />
-            </button>
-          </Share>
-        </Link>
-        <Link
+          title="Google DGC: UGA Listing"
+          shareText=""
+        />
+        <ShareButton
           href="https://docs.google.com/forms/d/e/1FAIpQLSfH6BQCUm96Q9rUu-WKVeG6qzM4tRrXzfwxj_Np8XJoZtlZJQ/viewform"
-          target="_blank"
-          className="flex items-center justify-between gap-2 rounded-sm bg-rose-200 px-4 py-2 text-black hover:underline"
-        >
-          <PiLink />
-          <span className="w-full text-center">Focus Lead Interest Form</span>
-          <Share>
-            <button className="-m-1 rounded-full p-1 transition-colors hover:bg-rose-300">
-              <PiDotsThreeVertical />
-            </button>
-          </Share>
-        </Link>
-        <Link
+          title="Focus Lead Interest Form"
+          shareText=""
+        />
+        <ShareButton
           href="https://forms.gle/7DFteDC9iGu5rVCL7"
-          target="_blank"
-          className="flex items-center justify-between gap-2 rounded-sm bg-rose-200 px-4 py-2 text-black hover:underline"
-        >
-          <PiLink />
-          <span className="w-full text-center">A-Team Interest Form</span>
-          <Share>
-            <button className="-m-1 rounded-full p-1 transition-colors hover:bg-rose-300">
-              <PiDotsThreeVertical />
-            </button>
-          </Share>
-        </Link>
+          title="A-Team Interest Form"
+          shareText=""
+        />
       </div>
 
       <div className="flex gap-8 text-2xl text-rose-100">

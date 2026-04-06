@@ -54,15 +54,15 @@ const profileSchema = z.object({
  * Fetches the Discord profile and adds the user to the DevDogs guild.
  * The identity link itself is managed by Supabase (`auth.identities`).
  * @param accessToken The Discord access token from the Supabase OAuth session.
- * @param publicProfile The public profile of the user (their `name` is used to
+ * @param profile The public profile of the user (their `name` is used to
  *   set their Discord nickname in the guild).
  * @see `requestAuthorization`
  */
 export async function linkProfile(
   accessToken: string,
-  publicProfile: { name: string },
+  preferredName: string,
 ): Promise<void> {
-  const profile = await fetch("https://discord.com/api/users/@me", {
+  const discordProfile = await fetch("https://discord.com/api/users/@me", {
     headers: { Authorization: "Bearer " + accessToken },
   })
     .then((res) => res.json())
@@ -70,7 +70,7 @@ export async function linkProfile(
 
   // Add the Discord user to the DevDogs guild
   await fetch(
-    `https://discord.com/api/guilds/${env.DISCORD_GUILD_ID}/members/${profile.id}`,
+    `https://discord.com/api/guilds/${env.DISCORD_GUILD_ID}/members/${discordProfile.id}`,
     {
       method: "PUT",
       headers: {
@@ -80,7 +80,7 @@ export async function linkProfile(
       },
       body: JSON.stringify({
         access_token: accessToken,
-        nick: publicProfile.name,
+        nick: preferredName,
         roles: [],
       }),
     },

@@ -6,11 +6,12 @@ import { expectUserWith } from "~/server/auth";
 import { supabaseAdmin } from "~/server/supabaseAdmin";
 
 export default async function Keys() {
-  const { onboarding } = await expectUserWith({
-    onboarding: { columns: { oauthClientId: true } },
+  const { profile, githubIdentity } = await expectUserWith({
+    profile: { columns: { oauthClientId: true } },
+    githubIdentity: { columns: { id: true } },
   }).catch(() => redirect("/api/auth"));
 
-  const clientId = onboarding?.oauthClientId ?? null;
+  const clientId = profile?.oauthClientId ?? null;
 
   const redirectUris: string[] = [];
 
@@ -23,12 +24,13 @@ export default async function Keys() {
   }
 
   return (
-    <SettingsNavigation title="Public Profile" pathname="/settings/keys">
+    <SettingsNavigation title="Profile" pathname="/settings/keys">
       <section className="w-full overflow-hidden rounded-md border border-zinc-800">
         <OAuthKeys
           clientId={clientId}
           redirectUris={redirectUris}
           oauthUrl={env.API_URL}
+          hasGithub={githubIdentity !== null}
         />
       </section>
     </SettingsNavigation>

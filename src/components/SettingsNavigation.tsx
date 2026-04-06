@@ -7,7 +7,6 @@ import {
   PiChatCircleDotsBold,
   PiKeyBold,
   PiLineVerticalBold,
-  PiLinkBold,
   PiListBold,
   PiSignOutBold,
   PiUserBold,
@@ -46,14 +45,7 @@ function NavContent({ pathname }: NavContentProps) {
           active={pathname.startsWith("/settings/profile")}
         >
           <PiUserBold />
-          Public Profile
-        </NavLink>
-        <NavLink
-          href="/settings/accounts"
-          active={pathname.startsWith("/settings/accounts")}
-        >
-          <PiLinkBold />
-          Linked Accounts
+          Profile
         </NavLink>
         <NavLink
           href="/settings/keys"
@@ -117,7 +109,7 @@ export default function SettingsNavigation({
           <NavContent pathname={pathname} />
         </aside>
 
-        <div className="flex flex-1 flex-col gap-8 px-3">{children}</div>
+        <div className="flex flex-1 flex-col gap-8 px-3 pb-8">{children}</div>
       </main>
 
       <Dialog.Portal>

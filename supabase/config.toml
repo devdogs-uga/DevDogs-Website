@@ -44,6 +44,10 @@ site_url = "env(BASE_URL)"
 additional_redirect_urls = ["env(BASE_URL)/api/auth/callback"]
 enable_manual_linking = true
 
+[auth.hook.custom_access_token]
+enabled = true
+uri = "pg-functions://postgres/public/custom_access_token_hook"
+
 [auth.oauth_server]
 enabled = true
 

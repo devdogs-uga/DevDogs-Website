@@ -6,11 +6,11 @@ import Avatar from "~/components/Avatar";
 import signOut from "~/server/actions/signOut";
 import type {
   leaderboardProfiles,
-  publicProfiles,
+  profiles,
 } from "~/server/db/schema/tables";
 
 interface Props {
-  publicProfile: typeof publicProfiles.$inferSelect;
+  profile: typeof profiles.$inferSelect;
   githubProfile: typeof leaderboardProfiles.$inferSelect | null | undefined;
   streak:
     | {
@@ -23,7 +23,7 @@ interface Props {
 }
 
 export default function ProfileMenu({
-  publicProfile,
+  profile,
   githubProfile,
   streak,
 }: Props) {
@@ -35,7 +35,7 @@ export default function ProfileMenu({
         className="text-[2rem]/0 md:text-4xl/0"
         suppressHydrationWarning
       >
-        <Avatar {...publicProfile} />
+        <Avatar {...profile} />
       </Menu.Trigger>
 
       <Menu.Portal>
@@ -46,13 +46,13 @@ export default function ProfileMenu({
         >
           <Link
             className="flex items-center gap-2 px-3 py-1.5 transition-colors hover:bg-zinc-800"
-            href={`/community/${publicProfile.userId}`}
+            href={`/community/${profile.userId}`}
           >
             <span className="text-3xl/0">
-              <Avatar {...publicProfile} />
+              <Avatar {...profile} />
             </span>
             <span className="flex flex-col gap-0.75">
-              <span className="text-sm/none">{publicProfile.name}</span>
+              <span className="text-sm/none">{profile.preferredName}</span>
               <span className="text-xs/none text-zinc-400">Contributor</span>
             </span>
           </Link>

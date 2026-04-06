@@ -5,7 +5,7 @@ import { unlinkProfile } from "../auth/providers/discord";
 
 export default async function unlinkDiscordProfile() {
   await expectSession().catch(() =>
-    authenticate("google", "/settings/accounts"),
+    authenticate("google", "/settings/profile"),
   );
   await unlinkProfile();
   refresh();

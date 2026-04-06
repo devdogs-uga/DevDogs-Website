@@ -58,8 +58,8 @@ function NavigationItems() {
 interface Props {
   streak: ComponentProps<typeof AlertBanner>["streak"] &
     ComponentProps<typeof ProfileMenu>["streak"];
-  publicProfile:
-    | ComponentProps<typeof ProfileMenu>["publicProfile"]
+  profile:
+    | ComponentProps<typeof ProfileMenu>["profile"]
     | null
     | undefined;
   githubProfile:
@@ -69,7 +69,7 @@ interface Props {
 }
 
 export default function Navigation({
-  publicProfile,
+  profile,
   githubProfile,
   streak,
 }: Props) {
@@ -78,6 +78,7 @@ export default function Navigation({
   const navigationRef = useRef<HTMLElement>(null);
   const searchParams = useSearchParams();
   const pathname = usePathname();
+  console.log({ searchParams });
 
   const isFromLinkInBio = useMemo(
     () =>
@@ -158,9 +159,9 @@ export default function Navigation({
                 <span className="box-content h-0.5 w-full bg-current transition-transform group-data-menu-open:-translate-y-0.75 group-data-menu-open:rotate-45 group-data-menu-open:border-l-6" />
               </button>
 
-              {publicProfile ? (
+              {profile ? (
                 <ProfileMenu
-                  publicProfile={publicProfile}
+                  profile={profile}
                   githubProfile={githubProfile}
                   streak={streak}
                 />

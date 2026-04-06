@@ -23,7 +23,7 @@ export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const user = await expectUserWith({
-    publicProfile: true,
+    profile: true,
     leaderboardProfile: { with: { points: true } },
   }).catch(() => null);
 
@@ -53,7 +53,7 @@ export default async function RootLayout({
           <Navigation
             githubProfile={user?.leaderboardProfile}
             streak={streak}
-            publicProfile={user?.publicProfile}
+            profile={user?.profile}
           />
           {children}
         </div>

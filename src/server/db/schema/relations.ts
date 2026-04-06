@@ -3,14 +3,9 @@ import * as tables from "./tables";
 
 const relations = defineRelations(tables, (r) => ({
   authUsers: {
-    publicProfile: r.one.publicProfiles({
+    profile: r.one.profiles({
       from: r.authUsers.id,
-      to: r.publicProfiles.userId,
-      optional: false,
-    }),
-    onboarding: r.one.onboarding({
-      from: r.authUsers.id,
-      to: r.onboarding.userId,
+      to: r.profiles.userId,
       optional: false,
     }),
     identities: r.many.authIdentities({
@@ -41,17 +36,21 @@ const relations = defineRelations(tables, (r) => ({
       optional: false,
     }),
   },
-  publicProfiles: {
+  profiles: {
     authUser: r.one.authUsers({
-      from: r.publicProfiles.userId,
+      from: r.profiles.userId,
       to: r.authUsers.id,
       optional: false,
     }),
+    links: r.many.profileLinks({
+      from: r.profiles.userId,
+      to: r.profileLinks.userId,
+    }),
   },
-  onboarding: {
-    authUser: r.one.authUsers({
-      from: r.onboarding.userId,
-      to: r.authUsers.id,
+  profileLinks: {
+    profile: r.one.profiles({
+      from: r.profileLinks.userId,
+      to: r.profiles.userId,
       optional: false,
     }),
   },

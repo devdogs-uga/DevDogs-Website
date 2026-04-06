@@ -46,13 +46,12 @@ export default async function Join() {
   const user = await expectUserWith({
     githubIdentity: { columns: { id: true } },
     discordIdentity: { columns: { id: true } },
-    onboarding: { columns: { viewedSettings: true } },
-    publicProfile: { columns: { name: true } },
+    profile: { columns: { viewedSettings: true, preferredName: true } },
   }).catch(() => redirect("/api/auth"));
 
   const githubStepComplete = !!user.githubIdentity;
   const discordStepComplete = !!user.discordIdentity;
-  const profileStepComplete = user.onboarding?.viewedSettings;
+  const profileStepComplete = user.profile?.viewedSettings;
 
   if (githubStepComplete && discordStepComplete && profileStepComplete) {
     redirect("/");
@@ -63,7 +62,7 @@ export default async function Join() {
       <header className="pb-10 text-center">
         <h2 className="pb-4 text-3xl font-bold sm:text-4xl">
           Hi there,{" "}
-          <span className="text-rose-400">{user.publicProfile.name}</span>
+          <span className="text-rose-400">{user.profile?.preferredName}</span>
         </h2>
         <p className="mx-auto max-w-sm text-lg font-medium text-zinc-400 sm:max-w-prose sm:text-xl">
           {githubStepComplete && discordStepComplete && profileStepComplete ? (
@@ -171,7 +170,7 @@ export default async function Join() {
       <OnboardingStep
         heading={
           <>
-            Complete Your <span className="text-rose-400">Public Profile</span>
+            Complete Your <span className="text-rose-400">Profile</span>
           </>
         }
         complete={profileStepComplete}

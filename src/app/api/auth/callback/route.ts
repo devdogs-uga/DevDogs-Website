@@ -46,22 +46,17 @@ export async function GET(request: NextRequest) {
   }
 
   const devDogsSession = await expectUserWith({
-    publicProfile: { columns: { userId: true, name: true } },
+    profile: { columns: { preferredName: true } },
   }).catch(() => unauthorized());
 
   if (session?.provider_token && intent === "link:discord") {
-    if (!devDogsSession.publicProfile) unauthorized();
-    await discord.linkProfile(
-      session.provider_token,
-      devDogsSession.publicProfile,
-    );
-
+    if (!devDogsSession.profile) unauthorized();
+    await discord.linkProfile(session.provider_token, devDogsSession.profile.preferredName);
     redirect(callbackPath);
   }
 
   if (session?.provider_token && intent === "link:github") {
     await github.linkProfile(session.provider_token);
-
     redirect(callbackPath);
   }
 

@@ -31,6 +31,7 @@ export async function authenticate(
 /**
  * Returns the currently signed-in user with the requested relations.
  * Throws if the user is not signed in or has no DevDogs profile.
+ * Always includes `id`, `email`, and `rawUserMetaData` from `auth.users`.
  * @param include Drizzle relational query `with` clause for the auth user record.
  * @returns The auth user with the requested relations.
  */
@@ -44,7 +45,7 @@ export async function expectUserWith<
   }
 
   const user = await db.query.authUsers.findFirst({
-    columns: { id: true },
+    columns: { id: true, email: true, rawUserMetaData: true },
     where: { id },
     with: include,
   });

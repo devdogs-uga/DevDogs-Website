@@ -3,7 +3,7 @@
 import { eq } from "drizzle-orm";
 import { authenticate, expectUserWith } from "../auth";
 import { db } from "../db";
-import { onboarding } from "../db/schema/tables";
+import { profiles } from "../db/schema/tables";
 import { supabaseAdmin } from "../supabaseAdmin";
 import isLocalUri from "~/lib/isLocalUri";
 
@@ -25,10 +25,11 @@ export default async function oauthAction(
   const intent = formData.get("intent")?.toString();
 
   const user = await expectUserWith({
-    onboarding: { columns: { oauthClientId: true } },
+    profile: { columns: { oauthClientId: true } },
+    githubIdentity: { columns: { id: true } },
   }).catch(() => authenticate("google", "/settings/keys"));
 
-  const clientId = user.onboarding?.oauthClientId;
+  const clientId = user.profile?.oauthClientId;
 
   // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
   switch (intent) {
@@ -36,31 +37,37 @@ export default async function oauthAction(
       if (clientId) {
         await db.transaction(async (tx) => {
           await tx
-            .update(onboarding)
+            .update(profiles)
             .set({ oauthClientId: null })
-            .where(eq(onboarding.userId, user.id));
+            .where(eq(profiles.userId, user.id));
           await supabaseAdmin.auth.admin.oauth.deleteClient(clientId);
         });
         return { clientId: null, clientSecret: null, redirectUris: [] };
+      }
+
+      if (!user.githubIdentity) {
+        throw new Error("A linked GitHub account is required to create an OAuth client");
       }
 
       const { data, error } = await supabaseAdmin.auth.admin.oauth.createClient(
         {
           client_name: user.id,
           redirect_uris: DEFAULT_REDIRECT_URIS,
+          scope: "openid email profile",
         },
       );
+
       if (error ?? !data) throw new Error("Failed to create OAuth client");
 
       await db
-        .update(onboarding)
+        .update(profiles)
         .set({ oauthClientId: data.client_id })
-        .where(eq(onboarding.userId, user.id));
+        .where(eq(profiles.userId, user.id));
 
       return {
         clientId: data.client_id,
-        clientSecret: null,
-        redirectUris: DEFAULT_REDIRECT_URIS,
+        clientSecret: data.client_secret ?? null,
+        redirectUris: data.redirect_uris,
       };
     }
 
@@ -70,7 +77,9 @@ export default async function oauthAction(
       const { data, error } =
         await supabaseAdmin.auth.admin.oauth.regenerateClientSecret(clientId);
       if (error || !data)
-        throw new Error(`Failed to regenerate client secret: ${error?.message}`);
+        throw new Error(
+          `Failed to regenerate client secret: ${error?.message}`,
+        );
 
       return { ...prev, clientId, clientSecret: data.client_secret ?? null };
     }

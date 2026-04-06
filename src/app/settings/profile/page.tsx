@@ -1,22 +1,17 @@
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import {
-  PiEnvelopeSimpleBold,
-  PiGithubLogoBold,
-  PiGlobeBold,
-  PiInstagramLogoBold,
-  PiLinkedinLogoBold,
-  PiUserBold,
-} from "react-icons/pi";
+import { PiEnvelopeSimpleBold, PiUserBold } from "react-icons/pi";
 import * as z from "zod";
 import * as zfd from "zod-form-data";
+import ConnectedAccounts from "~/components/ConnectedAccounts";
 import FormButton from "~/components/FormButton";
 import IconInput from "~/components/IconInput";
+import ProfileLinks from "~/components/ProfileLinks";
 import SettingsNavigation from "~/components/SettingsNavigation";
 import { authenticate, expectSession, expectUserWith } from "~/server/auth";
 import { db } from "~/server/db";
-import { onboarding, publicProfiles } from "~/server/db/schema/tables";
+import { profiles } from "~/server/db/schema/tables";
 
 async function updatePreferredName(formData: FormData) {
   "use server";
@@ -25,143 +20,76 @@ async function updatePreferredName(formData: FormData) {
     authenticate("google", "/settings/profile"),
   );
 
-  const { name } = await zfd
-    .formData({ name: zfd.text(z.string().max(32)) })
+  const { preferredName } = await zfd
+    .formData({ preferredName: zfd.text(z.string().min(1).max(32)) })
     .parseAsync(formData);
 
   await db
-    .update(publicProfiles)
-    .set({ name })
-    .where(eq(publicProfiles.userId, userId));
-
-  revalidatePath("/settings/profile");
-}
-
-async function updateEmail(formData: FormData) {
-  "use server";
-
-  const userId = await expectSession().catch(() =>
-    authenticate("google", "/settings/profile"),
-  );
-
-  await db
-    .update(publicProfiles)
-    .set(
-      await zfd
-        .formData({ email: zfd.text(z.email()).nullish().default(null) })
-        .parseAsync(formData),
-    )
-    .where(eq(publicProfiles.userId, userId));
-
-  revalidatePath("/settings/profile");
-}
-
-async function updateProfileUrl(formData: FormData) {
-  "use server";
-
-  const userId = await expectSession().catch(() =>
-    authenticate("google", "/settings/profile"),
-  );
-
-  await db
-    .update(publicProfiles)
-    .set(
-      await zfd
-        .formData({ portfolioUrl: zfd.text(z.url()).nullish().default(null) })
-        .parseAsync(formData),
-    )
-    .where(eq(publicProfiles.userId, userId));
-
-  revalidatePath("/settings/profile");
-}
-
-async function updateSocialMedia(formData: FormData) {
-  "use server";
-
-  const userId = await expectSession().catch(() =>
-    authenticate("google", "/settings/profile"),
-  );
-
-  await db
-    .update(publicProfiles)
-    .set(
-      await zfd
-        .formData({
-          linkedinUsername: zfd.text(
-            z
-              .string()
-              .regex(/[\w\.]{2,}/)
-              .optional(),
-          ),
-          githubUsername: zfd.text(
-            z
-              .string()
-              .regex(/[\w\.]{2,}/)
-              .optional(),
-          ),
-          instagramUsername: zfd.text(
-            z
-              .string()
-              .regex(/[\w\.]{2,}/)
-              .optional(),
-          ),
-        })
-        .parseAsync(formData),
-    )
-    .where(eq(publicProfiles.userId, userId));
+    .update(profiles)
+    .set({ preferredName })
+    .where(eq(profiles.userId, userId));
 
   revalidatePath("/settings/profile");
 }
 
 export default async function Settings() {
   const user = await expectUserWith({
-    publicProfile: true,
-    onboarding: {
-      columns: { legalName: true, ugaMyId: true, viewedSettings: true },
+    profile: {
+      with: { links: true },
     },
     githubIdentity: { columns: { identityData: true } },
+    discordIdentity: { columns: { identityData: true } },
   }).catch(() => redirect("/api/auth"));
 
-  if (!user.onboarding?.viewedSettings) {
+  if (!user.profile?.viewedSettings) {
     await db
-      .update(onboarding)
+      .update(profiles)
       .set({ viewedSettings: true })
-      .where(eq(onboarding.userId, user.id));
+      .where(eq(profiles.userId, user.id));
   }
 
-  const legalName = user.onboarding?.legalName ?? "";
-  const ugaMyId = user.onboarding?.ugaMyId ?? "";
+  const githubLogin = user.githubIdentity?.identityData?.user_name;
+  const discordLogin = user.discordIdentity?.identityData?.user_name;
 
   return (
-    <SettingsNavigation title="Public Profile" pathname="/settings/profile">
+    <SettingsNavigation title="Profile" pathname="/settings/profile">
       <section className="w-full overflow-hidden rounded-md border border-zinc-800">
         <form className="contents" action={updatePreferredName}>
-          <div className="flex flex-col gap-3 bg-zinc-900 px-4 py-5 inset-shadow-sm">
-            <h3 className="text-xl font-bold">Preferred Name</h3>
+          <div className="flex flex-col gap-4 bg-zinc-900 px-4 py-5 inset-shadow-sm">
+            <h3 className="text-xl font-bold">Identity</h3>
 
-            <p className="max-w-prose text-zinc-300">
-              <span className="inline-block">
-                This will be displayed publicly.
-              </span>{" "}
-              <span className="inline-block">
-                We recommend using your full name.
-              </span>
-            </p>
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-zinc-300">
+                Preferred Name
+              </label>
+              <IconInput
+                icon={<PiUserBold />}
+                defaultValue={user.profile?.preferredName ?? ""}
+                minLength={1}
+                maxLength={32}
+                name="preferredName"
+                type="text"
+                required
+              />
+            </div>
 
-            <IconInput
-              icon={<PiUserBold />}
-              placeholder={legalName.split(" ")[0]}
-              defaultValue={user.publicProfile?.name ?? ""}
-              minLength={1}
-              maxLength={32}
-              name="name"
-              type="text"
-              required
-            />
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-zinc-300">
+                Email
+              </label>
+              <IconInput
+                icon={<PiEnvelopeSimpleBold />}
+                value={user.email ?? ""}
+                readOnly
+                disabled
+                type="email"
+              />
+            </div>
           </div>
           <div className="flex items-center justify-between gap-4 border-t border-zinc-800 bg-black p-4 font-medium">
             <p className="max-w-prose text-sm text-zinc-400">
-              Please use 32 characters at maximum.
+              Your email is set by your UGA Google account and cannot be changed
+              here.
             </p>
 
             <FormButton className="rounded-sm bg-purple-900 px-4 py-1 ring-purple-950 hover:not-disabled:bg-purple-200 hover:not-disabled:text-purple-950">
@@ -171,114 +99,14 @@ export default async function Settings() {
         </form>
       </section>
 
-      <section className="w-full overflow-hidden rounded-md border border-zinc-800">
-        <form className="contents" action={updateEmail}>
-          <div className="flex flex-col gap-3 bg-zinc-900 px-4 py-5 inset-shadow-sm">
-            <h3 className="pb-2 text-xl font-bold">Email</h3>
+      <ProfileLinks initialLinks={user.profile?.links ?? []} />
 
-            <IconInput
-              icon={<PiEnvelopeSimpleBold />}
-              placeholder={ugaMyId + "@uga.edu"}
-              defaultValue={user.publicProfile?.email ?? ""}
-              maxLength={254}
-              pattern="^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+\-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$"
-              name="email"
-              type="email"
-            />
-          </div>
-          <div className="flex items-center justify-between gap-4 border-t border-zinc-800 bg-black p-4 font-medium">
-            <p className="max-w-prose text-sm text-zinc-400">
-              Please use an email you check regularly.
-            </p>
-
-            <FormButton className="rounded-sm bg-purple-900 px-4 py-1 ring-purple-950 hover:not-disabled:bg-purple-200 hover:not-disabled:text-purple-950">
-              Save
-            </FormButton>
-          </div>
-        </form>
-      </section>
-
-      <section className="w-full overflow-hidden rounded-md border border-zinc-800">
-        <form className="contents" action={updateProfileUrl}>
-          <div className="flex flex-col gap-3 bg-zinc-900 px-4 py-5 inset-shadow-sm">
-            <h3 className="pb-2 text-xl font-bold">Portfolio Website</h3>
-
-            <IconInput
-              icon={<PiGlobeBold />}
-              placeholder="https://devdogsuga.com"
-              defaultValue={user.publicProfile?.portfolioUrl ?? ""}
-              maxLength={254}
-              name="portfolioUrl"
-              type="url"
-            />
-          </div>
-          <div className="flex items-center justify-between gap-4 border-t border-zinc-800 bg-black p-4 font-medium">
-            <p className="max-w-prose text-sm text-zinc-400">
-              Alternatively, use a download link for your resume.
-            </p>
-
-            <FormButton className="rounded-sm bg-purple-900 px-4 py-1 ring-purple-950 hover:not-disabled:bg-purple-200 hover:not-disabled:text-purple-950">
-              Save
-            </FormButton>
-          </div>
-        </form>
-      </section>
-
-      <section className="w-full overflow-hidden rounded-md border border-zinc-800">
-        <form className="contents" action={updateSocialMedia}>
-          <div className="flex flex-col gap-3 bg-zinc-900 px-4 py-5 inset-shadow-sm">
-            <h3 className="pb-3 text-xl font-bold">Social Medias</h3>
-
-            <IconInput
-              icon={<PiLinkedinLogoBold />}
-              prefix="linkedin.com/in/"
-              placeholder={legalName.replaceAll(/\W/g, "").toLocaleLowerCase()}
-              defaultValue={user.publicProfile?.linkedinUsername ?? ""}
-              maxLength={32}
-              minLength={2}
-              pattern="[\w\.]{2,}"
-              name="linkedinUsername"
-              type="text"
-            />
-
-            <IconInput
-              icon={<PiInstagramLogoBold />}
-              prefix="instagram.com/"
-              placeholder={legalName.replaceAll(/\W/g, "").toLocaleLowerCase()}
-              defaultValue={user.publicProfile?.instagramUsername ?? ""}
-              maxLength={32}
-              minLength={2}
-              pattern="[\w\.]{2,}"
-              name="instagramUsername"
-              type="text"
-            />
-
-            <IconInput
-              icon={<PiGithubLogoBold />}
-              prefix="github.com/"
-              placeholder={
-                user.githubIdentity?.identityData?.user_name ??
-                legalName.replaceAll(/\W/g, "").toLocaleLowerCase()
-              }
-              defaultValue={user.publicProfile?.githubUsername ?? ""}
-              maxLength={32}
-              minLength={2}
-              pattern="[\w\.]{2,}"
-              name="githubUsername"
-              type="text"
-            />
-          </div>
-          <div className="flex items-center justify-between gap-4 border-t border-zinc-800 bg-black p-4 font-medium">
-            <p className="max-w-prose text-sm text-zinc-400">
-              Remember, these will be shared publicly.
-            </p>
-
-            <FormButton className="rounded-sm bg-purple-900 px-4 py-1 ring-purple-950 hover:not-disabled:bg-purple-200 hover:not-disabled:text-purple-950">
-              Save
-            </FormButton>
-          </div>
-        </form>
-      </section>
+      <ConnectedAccounts
+        githubLogin={githubLogin}
+        discordUsername={discordLogin}
+        showGithub={user.profile?.showGithub ?? false}
+        showDiscord={user.profile?.showDiscord ?? false}
+      />
     </SettingsNavigation>
   );
 }
