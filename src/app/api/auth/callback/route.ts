@@ -5,7 +5,7 @@ import { expectUserWith } from "~/server/auth";
 import * as discord from "~/server/auth/providers/discord";
 import * as github from "~/server/auth/providers/github";
 import * as google from "~/server/auth/providers/google";
-import { createSupabaseServerClient } from "~/server/supabase";
+import { createSupabaseServerClient } from "~/supabase/server";
 
 /**
  * Handles all Supabase OAuth callbacks:

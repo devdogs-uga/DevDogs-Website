@@ -16,7 +16,7 @@
     },
     "build": {
       "dependsOn": [],
-      "outputs": [".next/**"],
+      "outputs": [".next/**", "dist/**"],
       "env": [
         "BASE_URL",
         "CRON_SECRET",

@@ -4,8 +4,8 @@ import { refresh } from "next/cache";
 import { authenticate, expectUserWith } from "../auth";
 import { unlinkProfile } from "../auth/providers/github";
 import { db } from "../db";
-import { oauthClients } from "../db/schema/tables";
-import { supabaseAdmin } from "../supabaseAdmin";
+import { oauthRegistrations } from "../db/schema/public";
+import { supabaseAdmin } from "../../supabase/admin";
 
 export default async function unlinkGithubProfile() {
   const user = await expectUserWith({
@@ -16,8 +16,8 @@ export default async function unlinkGithubProfile() {
   if (clientId) {
     await db.transaction(async (tx) => {
       await tx
-        .delete(oauthClients)
-        .where(eq(oauthClients.userId, user.id));
+        .delete(oauthRegistrations)
+        .where(eq(oauthRegistrations.userId, user.id));
       await supabaseAdmin.auth.admin.oauth.deleteClient(clientId);
     });
   }

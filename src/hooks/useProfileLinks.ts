@@ -3,8 +3,8 @@
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import addProfileLink from "~/server/actions/profileLinks";
-import { createClient } from "~/lib/supabase";
-import type { profileLinks } from "~/server/db/schema/tables";
+import { createClient } from "~/supabase/client";
+import type { profileLinks } from "~/server/db/schema/public";
 
 type ProfileLink = typeof profileLinks.$inferSelect;
 

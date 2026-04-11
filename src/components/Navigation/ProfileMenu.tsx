@@ -7,7 +7,7 @@ import signOut from "~/server/actions/signOut";
 import type {
   leaderboardProfiles,
   profiles,
-} from "~/server/db/schema/tables";
+} from "~/server/db/schema/public";
 
 interface Props {
   profile: typeof profiles.$inferSelect;
@@ -35,7 +35,7 @@ export default function ProfileMenu({
         className="text-[2rem]/0 md:text-4xl/0"
         suppressHydrationWarning
       >
-        <Avatar {...profile} />
+        <Avatar userId={profile.userId} preferredName={profile.preferredName} />
       </Menu.Trigger>
 
       <Menu.Portal>
@@ -49,7 +49,7 @@ export default function ProfileMenu({
             href={`/community/${profile.userId}`}
           >
             <span className="text-3xl/0">
-              <Avatar {...profile} />
+              <Avatar userId={profile.userId} preferredName={profile.preferredName} />
             </span>
             <span className="flex flex-col gap-0.75">
               <span className="text-sm/none">{profile.preferredName}</span>

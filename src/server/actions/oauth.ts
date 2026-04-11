@@ -3,9 +3,10 @@
 import { eq } from "drizzle-orm";
 import { authenticate, expectUserWith } from "../auth";
 import { db } from "../db";
-import { oauthClients } from "../db/schema/tables";
-import { supabaseAdmin } from "../supabaseAdmin";
-import isLocalUri from "~/lib/isLocalUri";
+import { oauthRegistrations } from "../db/schema/public";
+import { supabaseAdmin } from "../../supabase/admin";
+
+const MAX_REDIRECT_URIS = 5;
 
 const DEFAULT_REDIRECT_URIS = [
   "http://localhost:3000/api/auth", // Community Resource Forum
@@ -25,22 +26,36 @@ export default async function oauthAction(
   const intent = formData.get("intent")?.toString();
 
   const user = await expectUserWith({
-    profile: { with: { oauthClient: true } },
+    profile: { with: { oauthRegistration: true } },
     githubIdentity: { columns: { id: true } },
   }).catch(() => authenticate("google", "/settings/keys"));
 
-  const clientId = user.profile?.oauthClient?.clientId ?? null;
+  const clientId = user.profile?.oauthRegistration?.clientId ?? null;
 
   // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
   switch (intent) {
     case "toggle-client": {
       if (clientId) {
+        // Fetch test account auth user IDs before deleting so we can clean up
+        // the backing auth.users rows after the DB transaction.
+        const testAccounts = await db.query.oauthTestAccounts.findMany({
+          columns: { authUserId: true },
+          where: { clientId },
+        });
+
         await db.transaction(async (tx) => {
           await tx
-            .delete(oauthClients)
-            .where(eq(oauthClients.userId, user.id));
+            .delete(oauthRegistrations)
+            .where(eq(oauthRegistrations.userId, user.id));
           await supabaseAdmin.auth.admin.oauth.deleteClient(clientId);
         });
+
+        await Promise.all(
+          testAccounts.map(({ authUserId }) =>
+            supabaseAdmin.auth.admin.deleteUser(authUserId),
+          ),
+        );
+
         return { clientId: null, clientSecret: null, redirectUris: [] };
       }
 
@@ -59,7 +74,7 @@ export default async function oauthAction(
       if (error ?? !data) throw new Error("Failed to create OAuth client");
 
       await db
-        .insert(oauthClients)
+        .insert(oauthRegistrations)
         .values({ userId: user.id, clientId: data.client_id });
 
       return {
@@ -87,10 +102,16 @@ export default async function oauthAction(
 
       // eslint-disable-next-line @typescript-eslint/no-base-to-string
       const uri = formData.get("uri")?.toString().trim() ?? "";
-      if (!isLocalUri(uri))
-        throw new Error(
-          "Redirect URIs must use http:// and point to localhost or a local IP address",
-        );
+
+      let parsed: URL;
+      try {
+        parsed = new URL(uri);
+      } catch {
+        throw new Error("Invalid URL");
+      }
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        throw new Error("Redirect URIs must use http:// or https://");
+      }
 
       const { data: existing, error: getError } =
         await supabaseAdmin.auth.admin.oauth.getClient(clientId);
@@ -98,6 +119,10 @@ export default async function oauthAction(
         throw new Error(`Failed to fetch OAuth client: ${getError?.message}`);
 
       if (existing.redirect_uris.includes(uri)) return prev;
+
+      if (existing.redirect_uris.length >= MAX_REDIRECT_URIS) {
+        throw new Error(`A maximum of ${MAX_REDIRECT_URIS} redirect URIs are allowed`);
+      }
 
       const updated = [...existing.redirect_uris, uri];
       await supabaseAdmin.auth.admin.oauth.updateClient(clientId, {

@@ -40,9 +40,8 @@ file_size_limit = "50MiB"
 
 [storage.buckets.avatars]
 public = true
-file_size_limit = "5MiB"
-# MIME types accepted by Next.js Image Optimization
-allowed_mime_types = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/avif"]
+file_size_limit = "256KiB"
+allowed_mime_types = ["image/webp"]
 
 [auth]
 enabled = true
@@ -56,6 +55,7 @@ enable_manual_linking = true
 
 [auth.oauth_server]
 enabled = true
+authorization_url_path = "/oauth/consent"
 
 [auth.external.discord]
 enabled = true

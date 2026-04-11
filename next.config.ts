@@ -31,7 +31,7 @@ const config = {
     remotePatterns: [
       new URL("/storage/v1/object/public/**", env.NEXT_PUBLIC_SUPABASE_URL),
     ],
-    // dangerouslyAllowLocalIP: env.NODE_ENV !== "production"
+    dangerouslyAllowLocalIP: env.NODE_ENV !== "production"
   },
 } satisfies NextConfig;
 

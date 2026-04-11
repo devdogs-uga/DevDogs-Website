@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { env } from "~/env";
+import type { Database } from "./types";
 
 /**
  * Creates a Supabase server client backed by Next.js request cookies.
@@ -11,7 +12,7 @@ import { env } from "~/env";
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies();
 
-  return createServerClient(env.API_URL, env.PUBLISHABLE_KEY, {
+  return createServerClient<Database>(env.API_URL, env.PUBLISHABLE_KEY, {
     cookies: {
       getAll() {
         return cookieStore.getAll();

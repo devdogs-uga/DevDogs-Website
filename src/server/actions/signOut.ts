@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createSupabaseServerClient } from "../supabase";
+import { createSupabaseServerClient } from "../../supabase/server";
 import { getCallbackPath } from "../utils";
 
 export default async function signOut(formData: FormData) {

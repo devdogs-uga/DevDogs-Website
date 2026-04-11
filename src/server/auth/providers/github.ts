@@ -4,8 +4,8 @@ import { redirect } from "next/navigation";
 import z from "zod";
 import { env } from "~/env";
 import { db } from "~/server/db";
-import { leaderboardProfiles } from "~/server/db/schema/tables";
-import { createSupabaseServerClient } from "~/server/supabase";
+import { leaderboardProfiles } from "~/server/db/schema/public";
+import { createSupabaseServerClient } from "~/supabase/server";
 
 const CALLBACK_URL = new URL("/api/auth/callback", env.BASE_URL).toString();
 
@@ -89,7 +89,6 @@ export async function linkProfile(accessToken: string): Promise<void> {
     }),
   })
     .then((res) => res.json())
-    .then(console.log)
     .catch(console.error);
 
   // Accept the organization invitation on behalf of the user
@@ -106,7 +105,6 @@ export async function linkProfile(accessToken: string): Promise<void> {
     },
   )
     .then((res) => res.json())
-    .then(console.log)
     .catch(console.error);
 
   await db

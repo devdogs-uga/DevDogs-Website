@@ -52,3 +52,5 @@ volumes/s3/*
 # supabase
 supabase/*
 !supabase/config.toml
+src/supabase/types.d.ts
+src/supabase/drizzle

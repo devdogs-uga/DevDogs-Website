@@ -8,7 +8,7 @@ import {
   PiXBold,
 } from "react-icons/pi";
 import { useProfileLinks } from "~/hooks/useProfileLinks";
-import type { profileLinks } from "~/server/db/schema/tables";
+import type { profileLinks } from "~/server/db/schema/public";
 import FormButton from "./FormButton";
 
 interface Props {

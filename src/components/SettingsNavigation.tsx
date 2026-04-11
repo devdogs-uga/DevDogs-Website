@@ -48,11 +48,11 @@ function NavContent({ pathname }: NavContentProps) {
           Profile
         </NavLink>
         <NavLink
-          href="/settings/keys"
-          active={pathname.startsWith("/settings/keys")}
+          href="/settings/oauth"
+          active={pathname.startsWith("/settings/oauth")}
         >
           <PiKeyBold />
-          API Keys
+          OAuth
         </NavLink>
         <NavLink
           href="/settings/feedback"

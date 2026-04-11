@@ -2,7 +2,7 @@
 
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
-import { createClient } from "~/lib/supabase";
+import { createClient } from "~/supabase/client";
 
 export function useProfileIdentity(userId: string, initialName: string) {
   const [name, setName] = useState(initialName);

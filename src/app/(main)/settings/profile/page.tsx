@@ -1,13 +1,22 @@
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
-import AvatarUpload from "~/components/AvatarUpload";
+import Avatar from "~/components/Avatar";
 import ConnectedAccounts from "~/components/ConnectedAccounts";
 import ProfileIdentity from "~/components/ProfileIdentity";
 import ProfileLinks from "~/components/ProfileLinks";
 import SettingsNavigation from "~/components/SettingsNavigation";
 import { expectUserWith } from "~/server/auth";
 import { db } from "~/server/db";
-import { profiles } from "~/server/db/schema/tables";
+import { profiles } from "~/server/db/schema/public";
+
+function getIdentityUserName(identityData: unknown) {
+  return identityData &&
+    typeof identityData === "object" &&
+    "user_name" in identityData &&
+    typeof identityData.user_name === "string"
+    ? identityData.user_name
+    : undefined;
+}
 
 export default async function Settings() {
   const user = await expectUserWith({
@@ -25,25 +34,40 @@ export default async function Settings() {
       .where(eq(profiles.userId, user.id));
   }
 
-  const githubLogin = user.githubIdentity?.identityData?.user_name;
-  const discordLogin = user.discordIdentity?.identityData?.user_name;
-
   return (
     <SettingsNavigation title="Profile" pathname="/settings/profile">
-      <AvatarUpload userId={user.id} preferredName={user.profile.preferredName} />
+      <section className="w-full overflow-hidden rounded-md border border-zinc-800">
+        <div className="flex flex-col gap-4 bg-zinc-900 px-4 py-5 inset-shadow-sm">
+          <h3 className="text-xl font-bold">Profile Photo</h3>
+          <span className="text-[4rem]">
+            <Avatar
+              editable
+              userId={user.id}
+              preferredName={user.profile.preferredName}
+            />
+          </span>
+        </div>
+        <div className="flex items-center border-t border-zinc-800 bg-black px-4 py-3">
+          <p className="text-xs text-zinc-500">
+            JPEG · PNG · GIF · WEBP · AVIF &nbsp;·&nbsp; Max 5 MB
+          </p>
+        </div>
+      </section>
 
       <ProfileIdentity
         userId={user.id}
         initialName={user.profile.preferredName}
-        email={user.email}
+        email={user.email ?? undefined}
       />
 
       <ProfileLinks initialLinks={user.profile.links} />
 
       <ConnectedAccounts
         userId={user.id}
-        githubLogin={githubLogin}
-        discordUsername={discordLogin}
+        githubLogin={getIdentityUserName(user.githubIdentity?.identityData)}
+        discordUsername={getIdentityUserName(
+          user.discordIdentity?.identityData,
+        )}
         showGithub={user.profile.showGithub}
         showDiscord={user.profile.showDiscord}
       />

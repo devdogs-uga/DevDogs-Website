@@ -78,7 +78,6 @@ export default function Navigation({
   const navigationRef = useRef<HTMLElement>(null);
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  console.log({ searchParams });
 
   const isFromLinkInBio = useMemo(
     () =>

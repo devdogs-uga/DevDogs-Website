@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import * as z from "zod";
 import { env } from "~/env";
 
-const callbackPathSchema = z.string().transform((path, ctx) => {
+export const callbackPathSchema = z.string().transform((path, ctx) => {
   try {
     const url = new URL(String(path), env.BASE_URL);
     return url.toString().replace(url.origin, "");

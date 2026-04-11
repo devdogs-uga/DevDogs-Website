@@ -1,26 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import {
-  useActionState,
-  useCallback,
-  type ChangeEvent,
-  type PropsWithChildren
-} from "react";
-import {
-  PiArrowsClockwiseBold,
-  PiArrowUpBold,
-  PiXBold,
-} from "react-icons/pi";
-import isLocalUri from "~/lib/isLocalUri";
+import { useActionState, type PropsWithChildren } from "react";
+import { PiArrowsClockwiseBold, PiArrowUpBold, PiXBold } from "react-icons/pi";
 import oauthAction from "~/server/actions/oauth";
 import ConfirmDestructiveAction from "./ConfirmDestructiveAction";
 import CopyInput from "./CopyInput";
 import FormButton from "./FormButton";
 import Toggle from "./Toggle";
+import { env } from "~/env";
 
 interface Props {
-  oauthUrl: string;
   clientId: string | null;
   redirectUris: string[];
   hasGithub: boolean;
@@ -35,7 +25,6 @@ function MonoText({ children }: PropsWithChildren) {
 }
 
 export default function OAuthKeys({
-  oauthUrl,
   clientId: defaultClientId,
   redirectUris: defaultRedirectUris,
   hasGithub,
@@ -47,17 +36,7 @@ export default function OAuthKeys({
       redirectUris: defaultRedirectUris,
     });
 
-  const handleRedirectUriInputChange = useCallback(
-    (e: ChangeEvent<HTMLInputElement>) => {
-      e.currentTarget.setCustomValidity(
-        isLocalUri(e.currentTarget.value)
-          ? ""
-          : "Only local and internal URLs are supported.",
-      );
-    },
-    [],
-  );
-
+  const atUriLimit = redirectUris.length >= 5;
   const oauthEnabled = clientId !== null;
   return (
     <div
@@ -110,7 +89,7 @@ export default function OAuthKeys({
           </div>
 
           <label className="flex flex-col gap-1.5">
-            <span>OAuth URL</span>
+            <span>Base URL</span>
             <p className="pb-1.5 text-xs text-balance text-zinc-300 sm:text-left">
               <span className="block">
                 Authorization endpoint:{" "}
@@ -121,7 +100,11 @@ export default function OAuthKeys({
               </span>
             </p>
             <CopyInput
-              value={oauthEnabled ? oauthUrl : "•••••••••••••••••"}
+              value={
+                oauthEnabled
+                  ? env.NEXT_PUBLIC_SUPABASE_URL
+                  : "•••••••••••••••••"
+              }
               disabled={!oauthEnabled}
             />
           </label>
@@ -129,10 +112,9 @@ export default function OAuthKeys({
           <div className="flex flex-col gap-1.5 pb-1">
             <h4>Redirect URIs</h4>
 
-            <p className="max-w-prose text-xs text-balance text-zinc-300 pb-1.5 sm:text-left">
-              Redirect URIs can only reference local and internal hosts (e.g.,
-              <MonoText>127.0.0.1</MonoText> or <MonoText>0.0.0.0</MonoText>
-              ).
+            <p className="max-w-prose pb-1.5 text-xs text-balance text-zinc-300 sm:text-left">
+              Up to 5 redirect URIs. Must use <MonoText>http://</MonoText> or{" "}
+              <MonoText>https://</MonoText>.
             </p>
 
             <ul className="flex flex-col gap-3 pb-1.5 empty:hidden">
@@ -154,37 +136,49 @@ export default function OAuthKeys({
               ))}
             </ul>
 
-            <form action={dispatch} className="flex max-w-md gap-1.5">
-              <input type="hidden" name="intent" value="add-uri" />
-              <label className="flex w-full max-w-md overflow-hidden rounded-sm border border-zinc-700 bg-zinc-950 ring-0 ring-zinc-400 transition-shadow focus-within:ring-1 has-disabled:cursor-not-allowed">
-                <input
-                  className="form-input w-full border-0 bg-zinc-950 px-3 font-mono inset-shadow-sm placeholder:text-zinc-600 focus:ring-0 disabled:pointer-events-none disabled:text-zinc-600"
-                  name="uri"
-                  type="url"
-                  placeholder="http://localhost:3000/api/auth"
-                  onChange={handleRedirectUriInputChange}
-                  required
-                />
-              </label>
-              <FormButton
-                className="rounded-sm bg-purple-900 px-4 py-1 font-medium text-nowrap ring-purple-950 hover:not-disabled:bg-purple-200 hover:not-disabled:text-purple-950"
-                type="submit"
-              >
-                <PiArrowUpBold />
-                Add
-              </FormButton>
-            </form>
+            {!atUriLimit && (
+              <form action={dispatch} className="flex max-w-md gap-1.5">
+                <input type="hidden" name="intent" value="add-uri" />
+                <label className="flex w-full max-w-md overflow-hidden rounded-sm border border-zinc-700 bg-zinc-950 ring-0 ring-zinc-400 transition-shadow focus-within:ring-1 has-disabled:cursor-not-allowed">
+                  <input
+                    className="form-input w-full border-0 bg-zinc-950 px-3 font-mono inset-shadow-sm placeholder:text-zinc-600 focus:ring-0 disabled:pointer-events-none disabled:text-zinc-600"
+                    name="uri"
+                    type="url"
+                    placeholder="https://example.com/callback"
+                    required
+                  />
+                </label>
+                <FormButton
+                  className="rounded-sm bg-purple-900 px-4 py-1 font-medium text-nowrap ring-purple-950 hover:not-disabled:bg-purple-200 hover:not-disabled:text-purple-950"
+                  type="submit"
+                >
+                  <PiArrowUpBold />
+                  Add
+                </FormButton>
+              </form>
+            )}
           </div>
         </div>
       </div>
 
       <div className="flex items-center justify-center gap-4 border-t border-zinc-800 bg-black p-4 font-medium sm:justify-between">
         <p className="mt-1 max-w-prose text-sm text-balance text-zinc-400">
-          {oauthEnabled
-            ? "Your OAuth client is active. You can use it to authenticate users via DevDogs during project development."
-            : !hasGithub
-              ? <>You must <Link className="underline hover:text-zinc-200" href="/settings/profile#connectedAccounts">link a GitHub account</Link> before you can create an OAuth client.</>
-              : "Enable OAuth to generate credentials for authenticating users via DevDogs during project development."}
+          {oauthEnabled ? (
+            "Your OAuth client is active. You can use it to authenticate users via DevDogs during project development."
+          ) : !hasGithub ? (
+            <>
+              You must{" "}
+              <Link
+                className="underline hover:text-zinc-200"
+                href="/settings/profile#connectedAccounts"
+              >
+                link a GitHub account
+              </Link>{" "}
+              before you can create an OAuth client.
+            </>
+          ) : (
+            "Enable OAuth to generate credentials for authenticating users via DevDogs during project development."
+          )}
         </p>
 
         <div className="w-16 text-lg/0">
@@ -202,7 +196,11 @@ export default function OAuthKeys({
           ) : (
             <form action={dispatch}>
               <input type="hidden" name="intent" value="toggle-client" />
-              <Toggle checked={oauthEnabled} pending={isPending} disabled={!hasGithub} />
+              <Toggle
+                checked={oauthEnabled}
+                pending={isPending}
+                disabled={!hasGithub}
+              />
             </form>
           )}
         </div>

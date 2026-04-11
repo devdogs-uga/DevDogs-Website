@@ -1,5 +1,5 @@
 import { db } from "~/server/db";
-import { createSupabaseServerClient } from "~/server/supabase";
+import { createSupabaseServerClient } from "~/supabase/server";
 import * as discord from "./providers/discord";
 import * as github from "./providers/github";
 import * as google from "./providers/google";
@@ -36,7 +36,7 @@ export async function authenticate(
  * @returns The auth user with the requested relations.
  */
 export async function expectUserWith<
-  T extends (Parameters<typeof db.query.authUsers.findFirst>[0] & {})["with"],
+  T extends (Parameters<typeof db.query.usersInAuth.findFirst>[0] & {})["with"],
 >(include: T) {
   const id = await expectSession();
 
@@ -44,7 +44,7 @@ export async function expectUserWith<
     throw new Error("Session expected but not found.");
   }
 
-  const user = await db.query.authUsers.findFirst({
+  const user = await db.query.usersInAuth.findFirst({
     columns: { id: true, email: true, rawUserMetaData: true },
     where: { id },
     with: include,

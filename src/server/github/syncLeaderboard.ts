@@ -6,7 +6,7 @@ import { db } from "../db";
 import {
   leaderboardProfiles,
   points as pointsTable,
-} from "../db/schema/tables";
+} from "../db/schema/public";
 import {
   type ClosedIssuesResult,
   type ProjectFields,

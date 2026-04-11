@@ -9,7 +9,7 @@ import IconInput from "./IconInput";
 interface Props {
   userId: string;
   initialName: string;
-  email: string;
+  email?: string;
 }
 
 export default function ProfileIdentity({ initialName, email, userId }: Props) {
@@ -61,7 +61,7 @@ export default function ProfileIdentity({ initialName, email, userId }: Props) {
         </div>
         <div className="flex items-center justify-between gap-4 border-t border-zinc-800 bg-black p-4 font-medium">
           <p className="max-w-prose text-sm text-zinc-400">
-            Your email is set by your UGA Google account and cannot be changed
+            Your email is set by your UGA account and cannot be changed
             here.
           </p>
 

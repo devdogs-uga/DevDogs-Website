@@ -3,8 +3,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { env } from "~/env";
 import { db } from "~/server/db";
-import { profiles } from "~/server/db/schema/tables";
-import { createSupabaseServerClient } from "~/server/supabase";
+import { profiles } from "~/server/db/schema/public";
+import { createSupabaseServerClient } from "~/supabase/server";
 
 const CALLBACK_URL = new URL("/api/auth/callback", env.BASE_URL).toString();
 

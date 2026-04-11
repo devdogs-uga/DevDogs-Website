@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import z from "zod";
 import { env } from "~/env";
-import { createSupabaseServerClient } from "~/server/supabase";
+import { createSupabaseServerClient } from "~/supabase/server";
 
 const CALLBACK_URL = new URL("/api/auth/callback", env.BASE_URL).toString();
 

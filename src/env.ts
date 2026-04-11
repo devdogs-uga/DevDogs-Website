@@ -29,6 +29,10 @@ export const env = createEnv({
     DISCORD_GUILD_ID: z.string(),
     DISCORD_PUBLIC_KEY: z.string(),
     DISCORD_TOKEN: z.string(),
+    DOCS_CACHE_TTL: switchEnvironment({
+      local: z.coerce.number().int().nonnegative().default(0),
+      vercel: z.coerce.number().int().nonnegative().default(300),
+    }),
     GITHUB_ORG: z.string(),
     GITHUB_TOKEN: z.string(),
     // Derived (.env.supabase)
@@ -56,7 +60,7 @@ export const env = createEnv({
    */
   client: {
     NEXT_PUBLIC_SUPABASE_URL: z.string(),
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string(),
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string(),
     NEXT_PUBLIC_AVATARS_BUCKET: z.string(),
   },
 
@@ -76,6 +80,7 @@ export const env = createEnv({
     DISCORD_GUILD_ID: process.env.DISCORD_GUILD_ID,
     DISCORD_PUBLIC_KEY: process.env.DISCORD_PUBLIC_KEY,
     DISCORD_TOKEN: process.env.DISCORD_TOKEN,
+    DOCS_CACHE_TTL: process.env.DOCS_CACHE_TTL,
     GITHUB_ORG: process.env.GITHUB_ORG,
     GITHUB_TOKEN: process.env.GITHUB_TOKEN,
     // Derived (.env.supabase)
@@ -92,7 +97,7 @@ export const env = createEnv({
     STORAGE_S3_URL: process.env.STORAGE_S3_URL,
     // Client-side Supabase (mirrored from API_URL / PUBLISHABLE_KEY by sb:start)
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     NEXT_PUBLIC_AVATARS_BUCKET: process.env.NEXT_PUBLIC_AVATARS_BUCKET,
     // Built-ins
     NODE_ENV: process.env.NODE_ENV,
