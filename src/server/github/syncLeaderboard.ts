@@ -6,7 +6,7 @@ import { db } from "../db";
 import {
   leaderboardProfiles,
   points as pointsTable,
-} from "../db/schema/public";
+} from '../db/schema';
 import {
   type ClosedIssuesResult,
   type ProjectFields,
@@ -117,7 +117,7 @@ async function syncYearPoints(
         year,
         leaderboardProfileId: githubId,
         academyPoints: 0,
-        streakStart: closedAt,
+        streakStart: closedAt as unknown as string,
         streakLength: 1,
         longestStreakLength: 1,
         projectPoints: basePoints,
@@ -139,7 +139,7 @@ async function syncYearPoints(
     );
 
     if (isAfter(closedAt, streakRenewalCutoff)) {
-      pointsEntry.streakStart = closedAt;
+      pointsEntry.streakStart = closedAt as unknown as string;
       pointsEntry.streakLength = 1;
       continue;
     }

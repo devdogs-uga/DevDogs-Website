@@ -24,6 +24,7 @@ const config = {
     },
     resolveExtensions: [".graphql", ".gql", ".js", ".jsx", ".ts", ".tsx"],
   },
+  cacheComponents: true,
   experimental: {
     authInterrupts: true,
   },
@@ -31,8 +32,11 @@ const config = {
     remotePatterns: [
       new URL("/storage/v1/object/public/**", env.NEXT_PUBLIC_SUPABASE_URL),
     ],
-    dangerouslyAllowLocalIP: env.NODE_ENV !== "production"
+    dangerouslyAllowLocalIP: env.NODE_ENV !== "production",
   },
+  ...(env.NODE_ENV !== "production" && process.env.DEV_VPN_HOST
+    ? { allowedDevOrigins: [process.env.DEV_VPN_HOST] }
+    : {}),
 } satisfies NextConfig;
 
 export default config;

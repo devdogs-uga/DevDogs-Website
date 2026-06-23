@@ -1,4 +1,4 @@
-# Notice
+# Notice!
 
 As of 10/2/24, public development of the DevDogs Website has been discontinued to streamline development efforts and enforce greater quality control. Points awarded from completed contributions will not disappear.
 

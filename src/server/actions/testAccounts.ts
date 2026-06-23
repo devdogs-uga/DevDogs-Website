@@ -6,9 +6,29 @@ import { zfd } from "zod-form-data";
 import { supabaseAdmin } from "~/supabase/admin";
 import { authenticate, expectSession, expectUserWith } from "../auth";
 import { db } from "../db";
-import { oauthTestAccounts } from "../db/schema/public";
+import { oauthTestAccounts } from '../db/schema';
 
 const MAX_TEST_ACCOUNTS = 5;
+
+function getInitials(displayName: string): string {
+  return (
+    displayName
+      .trim()
+      .split(/\s+/)
+      .slice(0, 3)
+      .map((word) => word.match(/[a-z]/i)?.[0]?.toLowerCase() ?? "")
+      .join("") || "t"
+  );
+}
+
+function generateTestEmail(displayName: string, ownerEmail: string): string {
+  const initials = getInitials(displayName);
+  const digits = (Math.floor(Date.now() / 1000) % 100000)
+    .toString()
+    .padStart(5, "0");
+  const myId = ownerEmail.split("@")[0];
+  return `${initials}${digits}@${myId}.devdogsuga.test`;
+}
 
 const testAccountSchema = zfd.formData({
   displayName: zfd.text(z.string().min(1).max(255)),
@@ -29,7 +49,7 @@ export async function addTestAccount(formData: FormData) {
   const { displayName } = await testAccountSchema.parseAsync(formData);
   const user = await expectUserWith({
     testAccounts: true,
-  }).catch(() => authenticate("google", "/settings/oauth"));
+  }).catch(() => authenticate("google", "/tools/oauth"));
 
   if (user.testAccounts.length >= MAX_TEST_ACCOUNTS) {
     throw new Error(
@@ -37,19 +57,24 @@ export async function addTestAccount(formData: FormData) {
     );
   }
 
-  // Use a unique synthetic email with the IANA-reserved .test TLD for the
-  // auth.users row. This guarantees uniqueness and prevents any risk of
-  // impersonation (a .test address can never belong to a real user).
+  if (!user.email) {
+    throw new Error("Failed to create test account. Please try again.");
+  }
+
+  // Synthetic email following the UGA {letters}{numbers}@{domain} convention.
+  // The local part uses initials + a seconds-mod-100000 timestamp so no DB
+  // check is needed; collisions are practically impossible given the UI
+  // enforces at least one second between submissions. The owner's MyID as
+  // subdomain scopes uniqueness per user. The .test TLD (IANA-reserved)
+  // prevents any risk of impersonation.
   //
-  // The user-specified display email and display name are stored in
-  // user_metadata so OAuth clients can read them from the token or UserInfo
-  // endpoint. The `name` JWT claim comes from user_metadata.full_name via
-  // GoTrue's default OIDC claim mapping.
+  // Display name and email for OAuth clients are stored in user_metadata and
+  // surfaced via the custom_access_token hook.
   const testUserId = crypto.randomUUID();
   const { data: createUser, error: createUserError } =
     await supabaseAdmin.auth.admin.createUser({
       id: testUserId,
-      email: `${testUserId}@devdogsuga.test`,
+      email: generateTestEmail(displayName, user.email),
       email_confirm: true,
       user_metadata: {
         is_test_account: true,
@@ -60,7 +85,7 @@ export async function addTestAccount(formData: FormData) {
 
   if (createUserError ?? !createUser.user) {
     console.error({ createUserError });
-    throw new Error("Failed to create test account.");
+    throw new Error("Failed to create test account. Please try again.");
   }
 
   try {

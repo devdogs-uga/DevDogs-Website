@@ -3,6 +3,11 @@ import { redirect } from "next/navigation";
 import z from "zod";
 import { env } from "~/env";
 import { createSupabaseServerClient } from "~/supabase/server";
+import {
+  removeSyncedRolesOnUnlink,
+  syncRolesOnLink,
+} from "~/server/discord/memberSync";
+import { reconcileRoleDefinitions } from "~/server/discord/reconcile";
 
 const CALLBACK_URL = new URL("/api/auth/callback", env.BASE_URL).toString();
 
@@ -61,6 +66,7 @@ const profileSchema = z.object({
 export async function linkProfile(
   accessToken: string,
   preferredName: string,
+  userId: string,
 ): Promise<void> {
   const discordProfile = await fetch("https://discord.com/api/users/@me", {
     headers: { Authorization: "Bearer " + accessToken },
@@ -85,6 +91,15 @@ export async function linkProfile(
       }),
     },
   );
+
+  // Pull in any synced DevDogs roles the user already holds on Discord, and
+  // refresh synced role names/colors. Soft-fail — neither should block linking.
+  await syncRolesOnLink(userId, discordProfile.id).catch((err: unknown) => {
+    console.error("Failed to sync roles on Discord link:", err);
+  });
+  await reconcileRoleDefinitions().catch((err: unknown) => {
+    console.error("Failed to reconcile Discord role definitions on link:", err);
+  });
 }
 
 /**
@@ -92,7 +107,7 @@ export async function linkProfile(
  * DevDogs guild. The `provider_user_id` on the identity is the Discord
  * snowflake ID used for the guild API call.
  */
-export async function unlinkProfile(): Promise<void> {
+export async function unlinkProfile(userId: string): Promise<void> {
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase.auth.getUserIdentities();
 
@@ -126,4 +141,5 @@ export async function unlinkProfile(): Promise<void> {
   }
 
   await supabase.auth.unlinkIdentity(identity);
+  await removeSyncedRolesOnUnlink(userId);
 }

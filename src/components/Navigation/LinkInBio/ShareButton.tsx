@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, type MouseEvent } from "react";
-import { PiDotsThreeVertical, PiLink } from "react-icons/pi";
+import { DotsThreeVerticalIcon, LinkIcon } from "@phosphor-icons/react/ssr";
 
 interface Props {
   title: string;
@@ -34,16 +34,16 @@ export default function ShareButton({ title, href, shareText }: Props) {
     <Link
       href={href}
       target="_blank"
-      className="flex items-center justify-between gap-2 rounded-sm bg-rose-200 px-4 py-2 text-black hover:underline"
+      className="flex items-center justify-between gap-2 rounded-sm border border-black bg-white px-4 py-2 text-mauve-950 hover:bg-mauve-100"
     >
-      <PiLink />
+      <LinkIcon />
       <span className="w-full text-center">{title}</span>
       <button
-        className="-m-1 rounded-full p-1 transition-colors hover:bg-rose-300"
+        className="-m-1 rounded-sm p-1 transition-colors hover:bg-mauve-100"
         type="button"
         onClick={handleShareClick}
       >
-        <PiDotsThreeVertical />
+        <DotsThreeVerticalIcon />
       </button>
     </Link>
   );

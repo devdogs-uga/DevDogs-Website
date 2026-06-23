@@ -1,12 +1,12 @@
 import Link from "next/link";
 import {
-  PiArrowRightBold,
-  PiEnvelopeSimpleFill,
-  PiGithubLogoFill,
-  PiInstagramLogoFill,
-  PiLinkedinLogoFill
-} from "react-icons/pi";
-import LinkButton from "~/components/LinkButton";
+  ArrowRightIcon,
+  GithubLogoIcon,
+  InstagramLogoIcon,
+  LinkedinLogoIcon,
+  EnvelopeSimpleIcon,
+} from "@phosphor-icons/react/ssr";
+import LinkButton from "~/ui/link-button";
 import ShareButton from "./ShareButton";
 
 export default function LinkInBio() {
@@ -27,17 +27,17 @@ export default function LinkInBio() {
       <div className="flex w-full flex-col gap-3">
         <LinkButton
           href="/join"
-          className="flex items-center justify-center gap-5 rounded-sm bg-rose-900 px-12 py-3 text-xl font-extrabold tracking-wide text-white ring-rose-900 hover:bg-rose-200 hover:text-rose-900"
+          className="hover:shadow-block-md flex items-center justify-center gap-5 rounded-sm border border-black bg-cyan-400 px-12 py-3 text-xl font-extrabold tracking-wide text-black shadow-none transition-[translate,box-shadow] hover:-translate-x-1 hover:-translate-y-1"
         >
           Join DevDogs!
         </LinkButton>
         <Link
           href="?"
-          className="flex items-center justify-center gap-2 rounded-sm bg-rose-300 px-4 py-2 font-medium text-black hover:underline"
+          className="flex items-center justify-center gap-2 rounded-sm border border-black bg-white px-4 py-2 font-medium text-mauve-950 hover:bg-mauve-100"
           scroll={false}
         >
           Continue to Website
-          <PiArrowRightBold />
+          <ArrowRightIcon />
         </Link>
       </div>
 
@@ -64,34 +64,34 @@ export default function LinkInBio() {
         />
       </div>
 
-      <div className="flex gap-8 text-2xl text-rose-100">
+      <div className="flex gap-8 text-2xl text-mauve-700">
         <Link
-          className="transition-[scale,color] hover:scale-120 hover:text-rose-200"
+          className="transition-[scale,color] hover:scale-120 hover:text-black"
           href="#"
           target="_blank"
         >
-          <PiInstagramLogoFill />
+          <InstagramLogoIcon />
         </Link>
         <Link
-          className="transition-[scale,color] hover:scale-120 hover:text-rose-200"
+          className="transition-[scale,color] hover:scale-120 hover:text-black"
           href="#"
           target="_blank"
         >
-          <PiGithubLogoFill />
+          <GithubLogoIcon />
         </Link>
         <Link
-          className="transition-[scale,color] hover:scale-120 hover:text-rose-200"
+          className="transition-[scale,color] hover:scale-120 hover:text-black"
           href="#"
           target="_blank"
         >
-          <PiLinkedinLogoFill />
+          <LinkedinLogoIcon />
         </Link>
         <Link
-          className="transition-[scale,color] hover:scale-120 hover:text-rose-200"
+          className="transition-[scale,color] hover:scale-120 hover:text-black"
           href="#"
           target="_blank"
         >
-          <PiEnvelopeSimpleFill />
+          <EnvelopeSimpleIcon />
         </Link>
       </div>
     </div>

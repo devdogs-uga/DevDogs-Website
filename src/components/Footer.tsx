@@ -1,29 +1,43 @@
 import Image from "next/image";
 import Link from "next/link";
-import {
-  PiGithubLogoBold,
-  PiInstagramLogoBold,
-  PiLinkedinLogoBold,
-} from "react-icons/pi";
+import { GithubLogoIcon, InstagramLogoIcon, LinkedinLogoIcon } from "@phosphor-icons/react/ssr";
 import devdog from "~/assets/devdog.png";
 
 export default function Footer() {
   return (
     <footer
-      className="border-t border-zinc-800 bg-zinc-950 px-8 py-10 text-sm text-zinc-300"
+      className="relative overflow-hidden border-t-2 border-t-mauve-700 bg-mauve-950 px-8 py-10 text-sm text-mauve-400"
       id="footer"
     >
-      <div className="flex flex-col gap-10 lg:gap-15 mx-auto max-w-7xl w-full">
+      {/* Dense dot pattern — top-left */}
+      <div
+        aria-hidden
+        className="bg-dot-grid-dense pointer-events-none absolute top-0 left-0 h-full w-1/2 text-mauve-700/35"
+        style={{
+          maskImage: "linear-gradient(135deg, black 0%, transparent 60%)",
+          WebkitMaskImage: "linear-gradient(135deg, black 0%, transparent 60%)",
+        }}
+      />
+      {/* Dense dot pattern — bottom-right */}
+      <div
+        aria-hidden
+        className="bg-dot-grid-dense pointer-events-none absolute right-0 bottom-0 h-full w-1/2 text-mauve-700/35"
+        style={{
+          maskImage: "linear-gradient(315deg, black 0%, transparent 60%)",
+          WebkitMaskImage: "linear-gradient(315deg, black 0%, transparent 60%)",
+        }}
+      />
+      <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-col gap-10 lg:gap-15">
         <nav className="flex flex-col gap-12 lg:flex-row">
           <div className="flex flex-1 flex-col items-center gap-4 lg:items-start">
             <Link
               href="/"
-              className="flex items-center gap-2 text-lg font-bold text-white md:text-xl lg:gap-2.5"
+              className="flex items-center gap-2 text-lg md:text-xl lg:gap-2.5"
             >
               <figure className="size-[1.5em]">
                 <Image alt="Home" src={devdog} />
               </figure>
-              <h1 className="contents">DevDogs</h1>
+              <h1 className="font-display font-semibold text-white">DevDogs</h1>
             </Link>
 
             <p className="text-center text-balance lg:text-left">
@@ -40,22 +54,10 @@ export default function Footer() {
 
           <div className="hidden justify-between md:flex lg:contents">
             <div className="flex flex-col gap-2">
-              <p className="pb-2 text-lg font-bold text-white">
+              <p className="pb-2 text-lg font-bold text-mauve-100">
                 Explore DevDogs
               </p>
               <ul className="contents">
-                <li>
-                  <Link href="/community" className="hover:underline">
-                    Community
-                  </Link>
-                </li>
-
-                <li>
-                  <Link href="/projects" className="hover:underline">
-                    Projects
-                  </Link>
-                </li>
-
                 <li>
                   <Link href="/events" className="hover:underline">
                     Events
@@ -63,7 +65,10 @@ export default function Footer() {
                 </li>
 
                 <li>
-                  <Link href="/partners" className="hover:underline">
+                  <Link
+                    href="mailto:devdogs@uga.edu"
+                    className="hover:underline"
+                  >
                     Partners
                   </Link>
                 </li>
@@ -77,7 +82,7 @@ export default function Footer() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <p className="pb-2 text-lg font-bold text-white">Resources</p>
+              <p className="pb-2 text-lg font-bold text-mauve-100">Resources</p>
               <ul className="contents">
                 <li>
                   <Link
@@ -118,7 +123,9 @@ export default function Footer() {
             </div>
 
             <div className="flex flex-col gap-4">
-              <p className="text-lg font-bold text-white">Stay in the Loop</p>
+              <p className="text-lg font-bold text-mauve-100">
+                Stay in the Loop
+              </p>
 
               <p className="max-w-50">
                 Stay up-to-date with the latest from DevDogs by following us on
@@ -128,31 +135,31 @@ export default function Footer() {
               <ul className="flex items-center gap-2">
                 <li className="contents">
                   <Link
-                    className="rounded-full border border-zinc-400 p-1 text-lg transition-colors hover:border-zinc-200 hover:bg-zinc-900 hover:text-white"
+                    className="rounded-sm border border-mauve-700 p-1 text-lg transition-colors hover:bg-mauve-800"
                     href="https://instagram.com/DevDogs_UGA"
                     target="_blank"
                   >
-                    <PiInstagramLogoBold />
+                    <InstagramLogoIcon />
                   </Link>
                 </li>
 
                 <li className="contents">
                   <Link
-                    className="rounded-full border border-zinc-400 p-1 text-lg transition-colors hover:border-zinc-200 hover:bg-zinc-900 hover:text-white"
+                    className="rounded-sm border border-mauve-700 p-1 text-lg transition-colors hover:bg-mauve-800"
                     href="https://linkedin.com/company/DevDogs-UGA"
                     target="_blank"
                   >
-                    <PiLinkedinLogoBold />
+                    <LinkedinLogoIcon />
                   </Link>
                 </li>
 
                 <li className="contents">
                   <Link
-                    className="rounded-full border border-zinc-400 p-1 text-lg transition-colors hover:border-zinc-200 hover:bg-zinc-900 hover:text-white"
+                    className="rounded-sm border border-mauve-700 p-1 text-lg transition-colors hover:bg-mauve-800"
                     href="https://github.com/DevDogs-UGA"
                     target="_blank"
                   >
-                    <PiGithubLogoBold />
+                    <GithubLogoIcon />
                   </Link>
                 </li>
               </ul>
@@ -160,14 +167,15 @@ export default function Footer() {
           </div>
         </nav>
 
-        <p className="flex flex-col items-center justify-between gap-1 border-t border-zinc-700 pt-4 text-zinc-400 sm:flex-row">
+        <p className="flex flex-col items-center justify-between gap-1 border-t border-mauve-700 pt-4 text-mauve-500 sm:flex-row">
           <Link href="mailto:devdogs@uga.edu" className="hover:underline">
             devdogs@uga.edu
           </Link>
           <span>&copy; {new Date().getFullYear()} DevDogs</span>
           <span>&ldquo;Building for better&rdquo;</span>
         </p>
-      </div>
+      </div>{" "}
+      {/* relative z-10 */}
     </footer>
   );
 }

@@ -1,0 +1,16 @@
+import { type Config } from "drizzle-kit";
+import { loadEnvConfig } from "@next/env";
+
+loadEnvConfig(process.cwd());
+
+export default {
+  out: "./src/server/db/schema/generated",
+  dialect: "postgresql",
+  schemaFilter: ["public"],
+  dbCredentials: {
+    url: process.env.DB_URL!,
+  },
+  introspect: {
+    casing: "camel",
+  },
+} satisfies Config;

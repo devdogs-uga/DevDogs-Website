@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "~/supabase/client";
 import { env } from "~/env";
 import createAvatarUploadUrl from "~/server/actions/createAvatarUploadUrl";
+import { toast } from "~/lib/toast";
 
 function avatarQueryKey(userId: string) {
   return ["avatar", userId] as const;
@@ -45,6 +46,10 @@ export function useAvatarUpload(userId: string) {
       const prev = queryClient.getQueryData<string>(avatarQueryKey(userId));
       if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
       queryClient.setQueryData(avatarQueryKey(userId), croppedUrl);
+      toast.success("Avatar updated");
+    },
+    onError: () => {
+      toast.error("Failed to upload avatar");
     },
   });
 

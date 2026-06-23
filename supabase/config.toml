@@ -1,23 +1,20 @@
-project_id = "devdogs-website"
+project_id = "DevDogs-Website"
 
 [api]
 enabled = true
-port = 54321
+port = "env(SB_API_PORT)"
 schemas = ["public", "graphql_public","storage"]
 extra_search_path = ["public", "extensions"]
 max_rows = 1000
 
-[api.tls]
-enabled = false
-
 [db]
-port = 54322
-shadow_port = 54320
+port = "env(SB_DB_PORT)"
+shadow_port = "env(SB_DB_SHADOW_PORT)"
 major_version = 17
 
 [db.pooler]
 enabled = false
-port = 54329
+port = "env(SB_DB_POOLER_PORT)"
 pool_mode = "transaction"
 default_pool_size = 20
 max_client_conn = 100
@@ -27,12 +24,12 @@ enabled = false
 
 [studio]
 enabled = true
-port = 54323
+port = "env(SB_STUDIO_PORT)"
 api_url = "http://127.0.0.1"
 
 [inbucket]
 enabled = true
-port = 54324
+port = "env(SB_INBUCKET_PORT)"
 
 [storage]
 enabled = true
@@ -42,6 +39,11 @@ file_size_limit = "50MiB"
 public = true
 file_size_limit = "256KiB"
 allowed_mime_types = ["image/webp"]
+
+[storage.buckets.feedback-attachments]
+public = false
+file_size_limit = "5MiB"
+allowed_mime_types = ["image/jpeg","image/png","image/webp","image/gif","application/pdf"]
 
 [auth]
 enabled = true
@@ -71,3 +73,11 @@ secret = "env(GITHUB_CLIENT_SECRET)"
 enabled = true
 client_id = "env(GOOGLE_CLIENT_ID)"
 secret = "env(GOOGLE_CLIENT_SECRET)"
+
+[auth.external.linkedin_oidc]
+enabled = true
+client_id = "env(LINKEDIN_CLIENT_ID)"
+secret = "env(LINKEDIN_CLIENT_SECRET)"
+
+[analytics]
+enabled = false

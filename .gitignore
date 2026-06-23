@@ -53,3 +53,12 @@ supabase/.*
 .claude
 .idea
 .mcp.json
+
+# eslint
+/.eslintcache
+.idea/inspectionProfiles/Project_Default.xml
+.idea/vcs.xml
+
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat

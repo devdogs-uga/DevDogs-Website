@@ -6,7 +6,7 @@ import * as z from "zod";
 import * as zfd from "zod-form-data";
 import { authenticate, expectSession } from "../auth";
 import { db } from "../db";
-import { profiles } from "../db/schema/public";
+import { profiles } from '../db/schema';
 
 export type AccountVisibilityState = {
   showGithub: boolean;
@@ -18,7 +18,7 @@ export default async function updateAccountVisibility(
   formData: FormData,
 ): Promise<AccountVisibilityState> {
   const userId = await expectSession().catch(() =>
-    authenticate("google", "/settings/profile"),
+    authenticate("google", "/console/profile"),
   );
 
   const { provider, show } = await zfd
@@ -33,7 +33,7 @@ export default async function updateAccountVisibility(
     .set(provider === "github" ? { showGithub: show } : { showDiscord: show })
     .where(eq(profiles.userId, userId));
 
-  revalidatePath("/settings/profile");
+  revalidatePath("/console/profile");
 
   return provider === "github"
     ? { ...prevState, showGithub: show }

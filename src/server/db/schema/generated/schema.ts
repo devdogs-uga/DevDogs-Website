@@ -1,0 +1,469 @@
+import { pgEnum, pgTable, uuid, varchar, integer, text, timestamp, date, doublePrecision, boolean, jsonb, uniqueIndex, foreignKey, primaryKey, unique, check, pgPolicy, pgView, pgMaterializedView } from "drizzle-orm/pg-core"
+import { sql } from "drizzle-orm"
+// Cross-schema FK targets — re-injected after each `drizzle-kit pull` (see db:pull in package.json)
+import { usersInAuth as users, oauthClientsInAuth as oauthClients } from "~/supabase/drizzle/schema"
+
+export const graduationSemester = pgEnum("graduationSemester", ["spring", "summer", "fall"])
+export const credentialType = pgEnum("credentialType", ["email_password", "totp", "email_password_totp"])
+export const roleType = pgEnum("roleType", ["default", "root", "custom"])
+export const contentAction = pgEnum("contentAction", ["quarantine", "no_action"])
+export const filerAction = pgEnum("filerAction", ["warn", "suspend", "no_action"])
+export const reportStatus = pgEnum("reportStatus", ["unverified", "pending", "resolved", "dismissed"])
+export const subjectAction = pgEnum("subjectAction", ["warn", "suspend", "ban", "no_action"])
+export const oauthRegistrationType = pgEnum("oauthRegistrationType", ["development", "production"])
+export const feedbackSeverity = pgEnum("feedbackSeverity", ["low", "medium", "high"])
+export const feedbackStatus = pgEnum("feedbackStatus", ["open", "in_review", "resolved", "dismissed"])
+export const feedbackType = pgEnum("feedbackType", ["bug_report", "feature_request", "design_feedback", "performance", "content_issue", "other"])
+
+
+export const contentReports = pgTable.withRLS("contentReports", {
+	id: uuid().defaultRandom().primaryKey(),
+	clientId: uuid().notNull().references(() => oauthClients.id, { onDelete: "cascade" } ),
+	reporterUserId: uuid().notNull().references(() => users.id, { onDelete: "cascade" } ),
+	reportedUserId: uuid().notNull().references(() => users.id, { onDelete: "cascade" } ),
+	contentId: text().notNull(),
+	contentSnapshot: varchar({ length: 5000 }).notNull(),
+	contentUrl: text(),
+	description: varchar({ length: 1000 }),
+	status: reportStatus().default("unverified").notNull(),
+	createdAt: timestamp().default(sql`now()`).notNull(),
+	resolvedAt: timestamp(),
+	reasonId: uuid().notNull(),
+	contentTypeId: uuid(),
+	verifyAttempts: integer().default(0).notNull(),
+	nextVerifyAt: timestamp(),
+}, (table) => [
+	foreignKey({
+		columns: [table.clientId, table.contentTypeId],
+		foreignColumns: [reportContentTypes.clientId, reportContentTypes.id],
+		name: "contentReports_clientId_contentTypeId_fkey"
+	}).onDelete("restrict"),
+	foreignKey({
+		columns: [table.clientId, table.reasonId],
+		foreignColumns: [reportReasons.clientId, reportReasons.id],
+		name: "contentReports_clientId_reasonId_fkey"
+	}).onDelete("restrict"),
+	uniqueIndex("contentReports_client_content_idx").using("btree", table.clientId.asc().nullsLast(), table.contentId.asc().nullsLast()),
+
+	pgPolicy("crud_authenticated_policy_delete", { as: "restrictive", for: "delete", to: ["authenticated"], using: sql`false` }),
+
+	pgPolicy("crud_authenticated_policy_select", { for: "select", to: ["authenticated"], using: sql`((( SELECT auth.uid() AS uid) = "reporterUserId") OR (EXISTS ( SELECT 1
+   FROM "moderatorRoles" mr
+  WHERE ((mr."userId" = ( SELECT auth.uid() AS uid)) AND (mr."clientId" = "contentReports"."clientId")))))` }),
+
+	pgPolicy("crud_authenticated_policy_update", { as: "restrictive", for: "update", to: ["authenticated"], using: sql`false`, withCheck: sql`false` }),
+
+	pgPolicy("reporter_insert", { for: "insert", to: ["authenticated"], withCheck: sql`(( SELECT auth.uid() AS uid) = "reporterUserId")` }),
+]);
+
+export const credentialRoles = pgTable.withRLS("credentialRoles", {
+	credentialId: uuid().notNull().references(() => credentials.id, { onDelete: "cascade" } ),
+	roleId: uuid().notNull().references(() => roles.id, { onDelete: "cascade" } ),
+}, (table) => [
+	primaryKey({ columns: [table.credentialId, table.roleId], name: "credentialRoles_pkey"}),
+
+	pgPolicy("crud_public_policy_delete", { as: "restrictive", for: "delete", using: sql`false` }),
+
+	pgPolicy("crud_public_policy_insert", { as: "restrictive", for: "insert", withCheck: sql`false` }),
+
+	pgPolicy("crud_public_policy_select", { as: "restrictive", for: "select", using: sql`false` }),
+
+	pgPolicy("crud_public_policy_update", { as: "restrictive", for: "update", using: sql`false`, withCheck: sql`false` }),
+]);
+
+export const credentials = pgTable.withRLS("credentials", {
+	id: uuid().defaultRandom().primaryKey(),
+	name: text().notNull(),
+	description: text(),
+	type: credentialType().notNull(),
+	email: text(),
+	passwordSecretId: uuid(),
+	totpSecretId: uuid(),
+	createdAt: timestamp({ withTimezone: true }).default(sql`now()`).notNull(),
+	createdBy: uuid().references(() => users.id, { onDelete: "set null" } ),
+}, (table) => [
+
+	pgPolicy("crud_public_policy_delete", { as: "restrictive", for: "delete", using: sql`false` }),
+
+	pgPolicy("crud_public_policy_insert", { as: "restrictive", for: "insert", withCheck: sql`false` }),
+
+	pgPolicy("crud_public_policy_select", { as: "restrictive", for: "select", using: sql`false` }),
+
+	pgPolicy("crud_public_policy_update", { as: "restrictive", for: "update", using: sql`false`, withCheck: sql`false` }),
+]);
+
+export const feedbackTopics = pgTable.withRLS("feedbackTopics", {
+	id: uuid().defaultRandom().primaryKey(),
+	clientId: uuid().notNull().references(() => oauthClients.id, { onDelete: "cascade" } ),
+	label: varchar({ length: 50 }).notNull(),
+	createdAt: timestamp().default(sql`now()`).notNull(),
+}, (table) => [
+	uniqueIndex("feedbackTopics_client_id_idx").using("btree", table.clientId.asc().nullsLast(), table.id.asc().nullsLast()),
+	uniqueIndex("feedbackTopics_client_label_idx").using("btree", table.clientId.asc().nullsLast(), table.label.asc().nullsLast()),
+
+	pgPolicy("authenticated_select", { for: "select", to: ["authenticated"], using: sql`true` }),
+
+	pgPolicy("crud_public_policy_update", { as: "restrictive", for: "update", using: sql`false`, withCheck: sql`false` }),
+
+	pgPolicy("owner_delete", { for: "delete", to: ["authenticated"], using: sql`(auth.uid() = ( SELECT "oauthRegistrations"."userId"
+   FROM "oauthRegistrations"
+  WHERE ("oauthRegistrations"."clientId" = "feedbackTopics"."clientId")))` }),
+
+	pgPolicy("owner_insert", { for: "insert", to: ["authenticated"], withCheck: sql`(auth.uid() = ( SELECT "oauthRegistrations"."userId"
+   FROM "oauthRegistrations"
+  WHERE ("oauthRegistrations"."clientId" = "feedbackTopics"."clientId")))` }),
+]);
+
+export const leaderboardProfiles = pgTable.withRLS("leaderboardProfiles", {
+	githubId: varchar({ length: 255 }).primaryKey(),
+	githubLogin: varchar({ length: 255 }).notNull(),
+	avatarUrl: text(),
+	allTimePoints: integer().default(0).notNull(),
+	allTimeRanking: integer(),
+	currentYearPoints: integer().default(0).notNull(),
+	currentYearRanking: integer(),
+}, (table) => [
+	uniqueIndex("login_idx").using("btree", sql`lower(("githubLogin")::text)`),
+	unique("leaderboardProfiles_githubLogin_key").on(table.githubLogin),
+	pgPolicy("crud_public_policy_delete", { as: "restrictive", for: "delete", using: sql`false` }),
+
+	pgPolicy("crud_public_policy_insert", { as: "restrictive", for: "insert", withCheck: sql`false` }),
+
+	pgPolicy("crud_public_policy_select", { as: "restrictive", for: "select", using: sql`false` }),
+
+	pgPolicy("crud_public_policy_update", { as: "restrictive", for: "update", using: sql`false`, withCheck: sql`false` }),
+]);
+
+export const moderatorRoles = pgTable.withRLS("moderatorRoles", {
+	id: uuid().defaultRandom().primaryKey(),
+	userId: uuid().notNull().references(() => users.id, { onDelete: "cascade" } ),
+	clientId: uuid().notNull().references(() => oauthClients.id, { onDelete: "cascade" } ),
+	grantedByUserId: uuid().notNull().references(() => users.id, { onDelete: "restrict" } ),
+	createdAt: timestamp().default(sql`now()`).notNull(),
+}, (table) => [
+	uniqueIndex("moderatorRoles_user_client_idx").using("btree", table.userId.asc().nullsLast(), table.clientId.asc().nullsLast()),
+
+	pgPolicy("crud_authenticated_policy_delete", { as: "restrictive", for: "delete", to: ["authenticated"], using: sql`false` }),
+
+	pgPolicy("crud_authenticated_policy_insert", { as: "restrictive", for: "insert", to: ["authenticated"], withCheck: sql`false` }),
+
+	pgPolicy("crud_authenticated_policy_select", { for: "select", to: ["authenticated"], using: sql`(( SELECT auth.uid() AS uid) = "userId")` }),
+
+	pgPolicy("crud_authenticated_policy_update", { as: "restrictive", for: "update", to: ["authenticated"], using: sql`false`, withCheck: sql`false` }),
+]);
+
+export const oauthRegistrations = pgTable.withRLS("oauthRegistrations", {
+	clientId: uuid().primaryKey().references(() => oauthClients.id, { onDelete: "cascade", onUpdate: "cascade" } ),
+	userId: uuid().notNull().references(() => users.id, { onDelete: "restrict", onUpdate: "cascade" } ),
+	type: oauthRegistrationType().default("development").notNull(),
+	reportWebhookUrl: text(),
+	reportWebhookSecretId: uuid(),
+}, (table) => [
+	unique("oauthRegistrations_userId_key").on(table.userId),
+	pgPolicy("crud_public_policy_delete", { as: "restrictive", for: "delete", using: sql`false` }),
+
+	pgPolicy("crud_public_policy_insert", { as: "restrictive", for: "insert", withCheck: sql`false` }),
+
+	pgPolicy("crud_public_policy_select", { as: "restrictive", for: "select", using: sql`false` }),
+
+	pgPolicy("crud_public_policy_update", { as: "restrictive", for: "update", using: sql`false`, withCheck: sql`false` }),
+]);
+
+export const oauthTestAccounts = pgTable.withRLS("oauthTestAccounts", {
+	testUserId: uuid().primaryKey().references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" } ),
+	ownerUserId: uuid().notNull().references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" } ),
+	createdAt: timestamp().default(sql`now()`).notNull(),
+}, (table) => [
+	unique("oauthTestAccounts_ownerUserId_key").on(table.ownerUserId),
+	pgPolicy("crud_public_policy_delete", { as: "restrictive", for: "delete", using: sql`false` }),
+
+	pgPolicy("crud_public_policy_insert", { as: "restrictive", for: "insert", withCheck: sql`false` }),
+
+	pgPolicy("crud_public_policy_select", { as: "restrictive", for: "select", using: sql`false` }),
+
+	pgPolicy("crud_public_policy_update", { as: "restrictive", for: "update", using: sql`false`, withCheck: sql`false` }),
+]);
+
+export const points = pgTable.withRLS("points", {
+	leaderboardProfileId: varchar({ length: 255 }).notNull().references(() => leaderboardProfiles.githubId, { onDelete: "cascade", onUpdate: "cascade" } ),
+	year: integer().notNull(),
+	streakStart: date().notNull(),
+	streakLength: integer().default(0).notNull(),
+	longestStreakLength: integer().default(0).notNull(),
+	projectPoints: integer().default(0).notNull(),
+	streakBonusPoints: integer().default(0).notNull(),
+	academyPoints: integer().default(0).notNull(),
+	points: integer().notNull().generatedAlwaysAs(sql`(("projectPoints" + "streakBonusPoints") + "academyPoints")`),
+}, (table) => [
+	primaryKey({ columns: [table.leaderboardProfileId, table.year], name: "points_pkey"}),
+
+	pgPolicy("crud_public_policy_delete", { as: "restrictive", for: "delete", using: sql`false` }),
+
+	pgPolicy("crud_public_policy_insert", { as: "restrictive", for: "insert", withCheck: sql`false` }),
+
+	pgPolicy("crud_public_policy_select", { as: "restrictive", for: "select", using: sql`false` }),
+
+	pgPolicy("crud_public_policy_update", { as: "restrictive", for: "update", using: sql`false`, withCheck: sql`false` }),
+]);
+
+export const profile = pgTable.withRLS("profile", {
+	userId: uuid().primaryKey().references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" } ),
+	preferredName: varchar({ length: 255 }).notNull(),
+	bio: varchar({ length: 127 }),
+	pronouns: text().array(),
+	graduationSemester: graduationSemester(),
+	graduationYear: integer(),
+	showGithub: boolean().default(false).notNull(),
+	showDiscord: boolean().default(false).notNull(),
+	showEmail: boolean().default(false).notNull(),
+	showLinkedin: boolean().default(false).notNull(),
+	viewedConsole: boolean().default(false).notNull(),
+	involvementFirstName: text(),
+	involvementLastName: text(),
+	involvementImportedAt: timestamp(),
+	roleDescription: varchar({ length: 127 }),
+}, (table) => [
+
+	pgPolicy("crud_authenticated_policy_delete", { as: "restrictive", for: "delete", to: ["authenticated"], using: sql`false` }),
+
+	pgPolicy("crud_authenticated_policy_insert", { as: "restrictive", for: "insert", to: ["authenticated"], withCheck: sql`false` }),
+
+	pgPolicy("crud_authenticated_policy_select", { for: "select", to: ["authenticated"], using: sql`(( SELECT auth.uid() AS uid) = "userId")` }),
+
+	pgPolicy("crud_authenticated_policy_update", { for: "update", to: ["authenticated"], using: sql`(( SELECT auth.uid() AS uid) = "userId")`, withCheck: sql`(( SELECT auth.uid() AS uid) = "userId")` }),
+]);
+
+export const profileLinks = pgTable.withRLS("profileLinks", {
+	id: uuid().defaultRandom().primaryKey(),
+	userId: uuid().notNull().references(() => profile.userId, { onDelete: "cascade", onUpdate: "cascade" } ),
+	url: text().notNull(),
+	title: varchar({ length: 64 }).notNull(),
+	sortOrder: doublePrecision().default(0).notNull(),
+	createdAt: timestamp().default(sql`now()`),
+}, (table) => [
+	unique("profileLinks_userId_sortOrder_key").on(table.userId, table.sortOrder),
+	pgPolicy("crud_authenticated_policy_delete", { for: "delete", to: ["authenticated"], using: sql`(( SELECT auth.uid() AS uid) = "userId")` }),
+
+	pgPolicy("crud_authenticated_policy_insert", { for: "insert", to: ["authenticated"], withCheck: sql`(( SELECT auth.uid() AS uid) = "userId")` }),
+
+	pgPolicy("crud_authenticated_policy_select", { for: "select", to: ["authenticated"], using: sql`(( SELECT auth.uid() AS uid) = "userId")` }),
+
+	pgPolicy("crud_authenticated_policy_update", { for: "update", to: ["authenticated"], using: sql`(( SELECT auth.uid() AS uid) = "userId")`, withCheck: sql`(( SELECT auth.uid() AS uid) = "userId")` }),
+]);
+
+export const reportContentTypes = pgTable.withRLS("reportContentTypes", {
+	id: uuid().defaultRandom().primaryKey(),
+	clientId: uuid().notNull().references(() => oauthClients.id, { onDelete: "cascade" } ),
+	label: varchar({ length: 100 }).notNull(),
+	createdAt: timestamp().default(sql`now()`).notNull(),
+}, (table) => [
+	uniqueIndex("reportContentTypes_client_id_idx").using("btree", table.clientId.asc().nullsLast(), table.id.asc().nullsLast()),
+	uniqueIndex("reportContentTypes_client_label_idx").using("btree", table.clientId.asc().nullsLast(), table.label.asc().nullsLast()),
+
+	pgPolicy("authenticated_select", { for: "select", to: ["authenticated"], using: sql`true` }),
+
+	pgPolicy("owner_delete", { for: "delete", to: ["authenticated"], using: sql`(auth.uid() = ( SELECT "oauthRegistrations"."userId"
+   FROM "oauthRegistrations"
+  WHERE ("oauthRegistrations"."clientId" = "reportContentTypes"."clientId")))` }),
+
+	pgPolicy("owner_insert", { for: "insert", to: ["authenticated"], withCheck: sql`(auth.uid() = ( SELECT "oauthRegistrations"."userId"
+   FROM "oauthRegistrations"
+  WHERE ("oauthRegistrations"."clientId" = "reportContentTypes"."clientId")))` }),
+]);
+
+export const reportCorroborations = pgTable.withRLS("reportCorroborations", {
+	id: uuid().defaultRandom().primaryKey(),
+	reportId: uuid().notNull().references(() => contentReports.id, { onDelete: "cascade" } ),
+	reporterUserId: uuid().notNull().references(() => users.id, { onDelete: "cascade" } ),
+	description: varchar({ length: 1000 }),
+	createdAt: timestamp().default(sql`now()`).notNull(),
+	reasonId: uuid().notNull().references(() => reportReasons.id, { onDelete: "restrict" } ),
+}, (table) => [
+	uniqueIndex("reportCorroborations_report_reporter_idx").using("btree", table.reportId.asc().nullsLast(), table.reporterUserId.asc().nullsLast()),
+
+	pgPolicy("corroborator_insert", { for: "insert", to: ["authenticated"], withCheck: sql`(( SELECT auth.uid() AS uid) = "reporterUserId")` }),
+
+	pgPolicy("corroborator_select", { for: "select", to: ["authenticated"], using: sql`((( SELECT auth.uid() AS uid) = "reporterUserId") OR (EXISTS ( SELECT 1
+   FROM ("contentReports" cr
+     JOIN "moderatorRoles" mr ON ((mr."clientId" = cr."clientId")))
+  WHERE ((cr.id = "reportCorroborations"."reportId") AND (mr."userId" = ( SELECT auth.uid() AS uid))))))` }),
+
+	pgPolicy("crud_authenticated_policy_delete", { as: "restrictive", for: "delete", to: ["authenticated"], using: sql`false` }),
+
+	pgPolicy("crud_authenticated_policy_update", { as: "restrictive", for: "update", to: ["authenticated"], using: sql`false`, withCheck: sql`false` }),
+]);
+
+export const reportReasons = pgTable.withRLS("reportReasons", {
+	id: uuid().defaultRandom().primaryKey(),
+	clientId: uuid().notNull().references(() => oauthClients.id, { onDelete: "cascade" } ),
+	title: varchar({ length: 100 }).notNull(),
+	description: text(),
+	createdAt: timestamp().default(sql`now()`).notNull(),
+}, (table) => [
+	uniqueIndex("reportReasons_client_id_idx").using("btree", table.clientId.asc().nullsLast(), table.id.asc().nullsLast()),
+	uniqueIndex("reportReasons_client_title_idx").using("btree", table.clientId.asc().nullsLast(), table.title.asc().nullsLast()),
+
+	pgPolicy("authenticated_select", { for: "select", to: ["authenticated"], using: sql`true` }),
+
+	pgPolicy("owner_delete", { for: "delete", to: ["authenticated"], using: sql`(auth.uid() = ( SELECT "oauthRegistrations"."userId"
+   FROM "oauthRegistrations"
+  WHERE ("oauthRegistrations"."clientId" = "reportReasons"."clientId")))` }),
+
+	pgPolicy("owner_insert", { for: "insert", to: ["authenticated"], withCheck: sql`(auth.uid() = ( SELECT "oauthRegistrations"."userId"
+   FROM "oauthRegistrations"
+  WHERE ("oauthRegistrations"."clientId" = "reportReasons"."clientId")))` }),
+]);
+
+export const reportResolutions = pgTable.withRLS("reportResolutions", {
+	id: uuid().defaultRandom().primaryKey(),
+	reportId: uuid().notNull().references(() => contentReports.id, { onDelete: "cascade" } ),
+	moderatorUserId: uuid().notNull().references(() => users.id, { onDelete: "restrict" } ),
+	subjectAction: subjectAction().notNull(),
+	filerAction: filerAction().notNull(),
+	contentAction: contentAction().notNull(),
+	appliedGlobally: boolean().default(false).notNull(),
+	moderatorNote: text(),
+	webhookAttempts: integer().default(0).notNull(),
+	nextRetryAt: timestamp(),
+	notifiedAt: timestamp(),
+	createdAt: timestamp().default(sql`now()`).notNull(),
+}, (table) => [
+	unique("reportResolutions_reportId_key").on(table.reportId),
+	pgPolicy("crud_authenticated_policy_delete", { as: "restrictive", for: "delete", to: ["authenticated"], using: sql`false` }),
+
+	pgPolicy("crud_authenticated_policy_insert", { as: "restrictive", for: "insert", to: ["authenticated"], withCheck: sql`false` }),
+
+	pgPolicy("crud_authenticated_policy_select", { for: "select", to: ["authenticated"], using: sql`(EXISTS ( SELECT 1
+   FROM "contentReports" cr
+  WHERE ((cr.id = "reportResolutions"."reportId") AND ((cr."reporterUserId" = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1
+           FROM "moderatorRoles" mr
+          WHERE ((mr."userId" = ( SELECT auth.uid() AS uid)) AND (mr."clientId" = cr."clientId"))))))))` }),
+
+	pgPolicy("crud_authenticated_policy_update", { as: "restrictive", for: "update", to: ["authenticated"], using: sql`false`, withCheck: sql`false` }),
+]);
+
+export const roles = pgTable.withRLS("roles", {
+	id: uuid().defaultRandom().primaryKey(),
+	title: varchar({ length: 64 }).notNull(),
+	description: text().default("").notNull(),
+	rank: doublePrecision(),
+	color: varchar({ length: 7 }),
+	canModerate: boolean(),
+	canManageRoles: boolean(),
+	canManageSuspensions: boolean(),
+	canViewAuditLog: boolean(),
+	canManageFeedback: boolean(),
+	canCreateCredentials: boolean(),
+	canManageVerification: boolean(),
+	createdAt: timestamp().default(sql`now()`).notNull(),
+	roleType: roleType().default("custom").notNull(),
+	showOnProfile: boolean().default(true).notNull(),
+	isLeadership: boolean().default(false).notNull(),
+	discordRoleId: text(),
+	discordSyncedName: text(),
+	discordSyncedColor: integer(),
+}, (table) => [
+	unique("roles_discordRoleId_key").on(table.discordRoleId),	unique("roles_rank_key").on(table.rank),	unique("roles_title_key").on(table.title),
+	pgPolicy("crud_authenticated_policy_delete", { as: "restrictive", for: "delete", to: ["authenticated"], using: sql`false` }),
+
+	pgPolicy("crud_authenticated_policy_insert", { as: "restrictive", for: "insert", to: ["authenticated"], withCheck: sql`false` }),
+
+	pgPolicy("crud_authenticated_policy_select", { for: "select", to: ["authenticated"], using: sql`true` }),
+
+	pgPolicy("crud_authenticated_policy_update", { as: "restrictive", for: "update", to: ["authenticated"], using: sql`false`, withCheck: sql`false` }),
+check("roles_custom_requires_rank", sql`(("roleType" = 'custom'::"roleType") = (rank IS NOT NULL))`),]);
+
+export const siteFeedback = pgTable.withRLS("siteFeedback", {
+	id: uuid().defaultRandom().primaryKey(),
+	userId: uuid().notNull().references(() => users.id, { onDelete: "cascade" } ),
+	type: feedbackType().notNull(),
+	severity: feedbackSeverity(),
+	title: varchar({ length: 100 }).notNull(),
+	description: text().notNull(),
+	status: feedbackStatus().default("open").notNull(),
+	browserMetadata: jsonb(),
+	attachmentPaths: text().array(),
+	adminNote: text(),
+	createdAt: timestamp().default(sql`now()`).notNull(),
+	updatedAt: timestamp().default(sql`now()`).notNull(),
+	clientId: uuid().references(() => oauthClients.id, { onDelete: "set null" } ),
+	topicId: uuid(),
+}, (table) => [
+	foreignKey({
+		columns: [table.clientId, table.topicId],
+		foreignColumns: [feedbackTopics.clientId, feedbackTopics.id],
+		name: "siteFeedback_clientId_topicId_fkey"
+	}).onDelete("restrict"),
+
+	pgPolicy("crud_authenticated_policy_delete", { as: "restrictive", for: "delete", to: ["authenticated"], using: sql`false` }),
+
+	pgPolicy("crud_authenticated_policy_insert", { for: "insert", to: ["authenticated"], withCheck: sql`(( SELECT auth.uid() AS uid) = "userId")` }),
+
+	pgPolicy("crud_authenticated_policy_select", { for: "select", to: ["authenticated"], using: sql`((( SELECT auth.uid() AS uid) = "userId") OR (EXISTS ( SELECT 1
+   FROM ("userRoles" ur
+     JOIN roles r ON ((r.id = ur."roleId")))
+  WHERE ((ur."userId" = ( SELECT auth.uid() AS uid)) AND (r."canManageFeedback" = true)))))` }),
+
+	pgPolicy("crud_authenticated_policy_update", { for: "update", to: ["authenticated"], using: sql`(EXISTS ( SELECT 1
+   FROM ("userRoles" ur
+     JOIN roles r ON ((r.id = ur."roleId")))
+  WHERE ((ur."userId" = ( SELECT auth.uid() AS uid)) AND (r."canManageFeedback" = true))))`, withCheck: sql`(EXISTS ( SELECT 1
+   FROM ("userRoles" ur
+     JOIN roles r ON ((r.id = ur."roleId")))
+  WHERE ((ur."userId" = ( SELECT auth.uid() AS uid)) AND (r."canManageFeedback" = true))))` }),
+check("siteFeedback_topic_xor_clientId", sql`(("clientId" IS NULL) = ("topicId" IS NULL))`),]);
+
+export const userRoles = pgTable.withRLS("userRoles", {
+	userId: uuid().notNull().references(() => users.id, { onDelete: "cascade" } ),
+	roleId: uuid().notNull().references(() => roles.id, { onDelete: "cascade" } ),
+}, (table) => [
+	primaryKey({ columns: [table.userId, table.roleId], name: "userRoles_pkey"}),
+	uniqueIndex("userRoles_root_singleton").using("btree", table.roleId.asc().nullsLast()).where(sql`("roleId" = '00000000-0000-0000-0000-000000000002'::uuid)`),
+
+	pgPolicy("crud_public_policy_delete", { as: "restrictive", for: "delete", using: sql`false` }),
+
+	pgPolicy("crud_public_policy_insert", { as: "restrictive", for: "insert", withCheck: sql`false` }),
+
+	pgPolicy("crud_public_policy_select", { as: "restrictive", for: "select", using: sql`false` }),
+
+	pgPolicy("crud_public_policy_update", { as: "restrictive", for: "update", using: sql`false`, withCheck: sql`false` }),
+]);
+
+export const userSuspensions = pgTable.withRLS("userSuspensions", {
+	id: uuid().defaultRandom().primaryKey(),
+	userId: uuid().notNull().references(() => users.id, { onDelete: "cascade" } ),
+	service: text().notNull(),
+	reason: text(),
+	suspendedAt: timestamp().default(sql`now()`).notNull(),
+	suspendedBy: uuid().references(() => users.id, { onDelete: "set null" } ),
+}, (table) => [
+	uniqueIndex("userSuspensions_user_service_idx").using("btree", table.userId.asc().nullsLast(), table.service.asc().nullsLast()),
+
+	pgPolicy("crud_public_policy_delete", { as: "restrictive", for: "delete", using: sql`false` }),
+
+	pgPolicy("crud_public_policy_insert", { as: "restrictive", for: "insert", withCheck: sql`false` }),
+
+	pgPolicy("crud_public_policy_select", { as: "restrictive", for: "select", using: sql`false` }),
+
+	pgPolicy("crud_public_policy_update", { as: "restrictive", for: "update", using: sql`false`, withCheck: sql`false` }),
+]);
+export const profileWithVerification = pgView("profileWithVerification", {	userId: uuid(),
+	hasPronouns: boolean(),
+	hasGraduationDate: boolean(),
+	hasGithub: boolean(),
+	hasDiscord: boolean(),
+	nameMatchesInvolvement: boolean(),
+	verified: boolean(),
+}).with({"securityInvoker":true}).as(sql`SELECT "userId", pronouns IS NOT NULL AND array_length(pronouns, 1) > 0 AS "hasPronouns", "graduationSemester" IS NOT NULL AND "graduationYear" IS NOT NULL AS "hasGraduationDate", (EXISTS ( SELECT 1 FROM auth.identities i WHERE i.user_id = p."userId" AND i.provider = 'github'::text)) AS "hasGithub", (EXISTS ( SELECT 1 FROM auth.identities i WHERE i.user_id = p."userId" AND i.provider = 'discord'::text)) AS "hasDiscord", "involvementFirstName" IS NOT NULL AND lower(TRIM(BOTH FROM "preferredName")) = lower((TRIM(BOTH FROM "involvementFirstName") || ' '::text) || TRIM(BOTH FROM "involvementLastName")) AS "nameMatchesInvolvement", pronouns IS NOT NULL AND array_length(pronouns, 1) > 0 AND "graduationSemester" IS NOT NULL AND "graduationYear" IS NOT NULL AND "involvementFirstName" IS NOT NULL AND lower(TRIM(BOTH FROM "preferredName")) = lower((TRIM(BOTH FROM "involvementFirstName") || ' '::text) || TRIM(BOTH FROM "involvementLastName")) AND (EXISTS ( SELECT 1 FROM auth.identities i WHERE i.user_id = p."userId" AND i.provider = 'github'::text)) AND (EXISTS ( SELECT 1 FROM auth.identities i WHERE i.user_id = p."userId" AND i.provider = 'discord'::text)) AS verified FROM profile p`);
+
+export const resolvedUserPermissions = pgMaterializedView("resolvedUserPermissions", {	userId: uuid(),
+	canModerate: boolean(),
+	canManageRoles: boolean(),
+	canManageSuspensions: boolean(),
+	canViewAuditLog: boolean(),
+	canManageFeedback: boolean(),
+	canCreateCredentials: boolean(),
+	canManageVerification: boolean(),
+	isLeader: boolean(),
+	minRank: doublePrecision(),
+}).as(sql`WITH root_holders AS ( SELECT ur."userId" FROM "userRoles" ur WHERE ur."roleId" = '00000000-0000-0000-0000-000000000002'::uuid ), user_custom_roles AS ( SELECT ur."userId", r.rank, r."isLeadership", r."canModerate", r."canManageRoles", r."canManageSuspensions", r."canViewAuditLog", r."canManageFeedback", r."canCreateCredentials", r."canManageVerification" FROM "userRoles" ur JOIN roles r ON r.id = ur."roleId" AND r."roleType" = 'custom'::"roleType" ), first_non_null AS ( SELECT ucr."userId", min(ucr.rank) AS "minRank", bool_or(ucr."isLeadership") AS "isLeader", (array_agg(ucr."canModerate" ORDER BY ucr.rank) FILTER (WHERE ucr."canModerate" IS NOT NULL))[1] AS "canModerate", (array_agg(ucr."canManageRoles" ORDER BY ucr.rank) FILTER (WHERE ucr."canManageRoles" IS NOT NULL))[1] AS "canManageRoles", (array_agg(ucr."canManageSuspensions" ORDER BY ucr.rank) FILTER (WHERE ucr."canManageSuspensions" IS NOT NULL))[1] AS "canManageSuspensions", (array_agg(ucr."canViewAuditLog" ORDER BY ucr.rank) FILTER (WHERE ucr."canViewAuditLog" IS NOT NULL))[1] AS "canViewAuditLog", (array_agg(ucr."canManageFeedback" ORDER BY ucr.rank) FILTER (WHERE ucr."canManageFeedback" IS NOT NULL))[1] AS "canManageFeedback", (array_agg(ucr."canCreateCredentials" ORDER BY ucr.rank) FILTER (WHERE ucr."canCreateCredentials" IS NOT NULL))[1] AS "canCreateCredentials", (array_agg(ucr."canManageVerification" ORDER BY ucr.rank) FILTER (WHERE ucr."canManageVerification" IS NOT NULL))[1] AS "canManageVerification" FROM user_custom_roles ucr GROUP BY ucr."userId" ), all_users AS ( SELECT DISTINCT "userRoles"."userId" FROM "userRoles" ) SELECT au."userId", CASE WHEN rh."userId" IS NOT NULL THEN true ELSE COALESCE(fnn."canModerate", false) END AS "canModerate", CASE WHEN rh."userId" IS NOT NULL THEN true ELSE COALESCE(fnn."canManageRoles", false) END AS "canManageRoles", CASE WHEN rh."userId" IS NOT NULL THEN true ELSE COALESCE(fnn."canManageSuspensions", false) END AS "canManageSuspensions", CASE WHEN rh."userId" IS NOT NULL THEN true ELSE COALESCE(fnn."canViewAuditLog", false) END AS "canViewAuditLog", CASE WHEN rh."userId" IS NOT NULL THEN true ELSE COALESCE(fnn."canManageFeedback", false) END AS "canManageFeedback", CASE WHEN rh."userId" IS NOT NULL THEN true ELSE COALESCE(fnn."canCreateCredentials", false) END AS "canCreateCredentials", CASE WHEN rh."userId" IS NOT NULL THEN true ELSE COALESCE(fnn."canManageVerification", false) END AS "canManageVerification", CASE WHEN rh."userId" IS NOT NULL THEN true ELSE COALESCE(fnn."isLeader", false) END AS "isLeader", CASE WHEN rh."userId" IS NOT NULL THEN '-Infinity'::double precision ELSE COALESCE(fnn."minRank", 'Infinity'::double precision) END AS "minRank" FROM all_users au LEFT JOIN root_holders rh ON rh."userId" = au."userId" LEFT JOIN first_non_null fnn ON fnn."userId" = au."userId"`);

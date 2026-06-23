@@ -29,12 +29,16 @@ export const env = createEnv({
     DISCORD_GUILD_ID: z.string(),
     DISCORD_PUBLIC_KEY: z.string(),
     DISCORD_TOKEN: z.string(),
-    DOCS_CACHE_TTL: switchEnvironment({
-      local: z.coerce.number().int().nonnegative().default(0),
-      vercel: z.coerce.number().int().nonnegative().default(300),
+    EDGE_CONFIG: switchEnvironment({
+      local: z.string().optional(),
+      vercel: z.string(),
     }),
     GITHUB_ORG: z.string(),
     GITHUB_TOKEN: z.string(),
+    GITHUB_WEBHOOK_SECRET: switchEnvironment({
+      local: z.string().default(""),
+      vercel: z.string().min(20),
+    }),
     // Derived (.env.supabase)
     API_URL: z.string(),
     DB_URL: z.string(),
@@ -62,6 +66,7 @@ export const env = createEnv({
     NEXT_PUBLIC_SUPABASE_URL: z.string(),
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string(),
     NEXT_PUBLIC_AVATARS_BUCKET: z.string(),
+    NEXT_PUBLIC_FEEDBACK_BUCKET: z.string(),
   },
 
   /**
@@ -80,10 +85,11 @@ export const env = createEnv({
     DISCORD_GUILD_ID: process.env.DISCORD_GUILD_ID,
     DISCORD_PUBLIC_KEY: process.env.DISCORD_PUBLIC_KEY,
     DISCORD_TOKEN: process.env.DISCORD_TOKEN,
-    DOCS_CACHE_TTL: process.env.DOCS_CACHE_TTL,
+    EDGE_CONFIG: process.env.EDGE_CONFIG,
     GITHUB_ORG: process.env.GITHUB_ORG,
     GITHUB_TOKEN: process.env.GITHUB_TOKEN,
-    // Derived (.env.supabase)
+    GITHUB_WEBHOOK_SECRET: process.env.GITHUB_WEBHOOK_SECRET,
+    // Derived (.env.local)
     API_URL: process.env.API_URL,
     DB_URL: process.env.DB_URL,
     // FUNCTIONS_URL: process.env.FUNCTIONS_URL,
@@ -97,8 +103,10 @@ export const env = createEnv({
     STORAGE_S3_URL: process.env.STORAGE_S3_URL,
     // Client-side Supabase (mirrored from API_URL / PUBLISHABLE_KEY by sb:start)
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     NEXT_PUBLIC_AVATARS_BUCKET: process.env.NEXT_PUBLIC_AVATARS_BUCKET,
+    NEXT_PUBLIC_FEEDBACK_BUCKET: process.env.NEXT_PUBLIC_FEEDBACK_BUCKET,
     // Built-ins
     NODE_ENV: process.env.NODE_ENV,
   },

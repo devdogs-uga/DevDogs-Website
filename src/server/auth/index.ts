@@ -3,6 +3,7 @@ import { createSupabaseServerClient } from "~/supabase/server";
 import * as discord from "./providers/discord";
 import * as github from "./providers/github";
 import * as google from "./providers/google";
+import * as linkedin from "./providers/linkedin";
 import { redirect } from "next/navigation";
 
 /**
@@ -11,11 +12,11 @@ import { redirect } from "next/navigation";
  * @param callbackPath Where to navigate the user after the OAuth flow is complete
  */
 export async function authenticate(
-  provider: "google" | "discord" | "github",
+  provider: "google" | "discord" | "github" | "linkedin_oidc",
   callbackPath: string,
 ): Promise<never> {
   if (provider !== "google") {
-    await expectSession().catch(() => redirect("/join"));
+    await expectSession().catch(() => redirect("/api/auth"));
   }
 
   switch (provider) {
@@ -25,6 +26,8 @@ export async function authenticate(
       return await discord.requestAuthorization(callbackPath);
     case "github":
       return await github.requestAuthorization(callbackPath);
+    case "linkedin_oidc":
+      return await linkedin.requestAuthorization(callbackPath);
   }
 }
 

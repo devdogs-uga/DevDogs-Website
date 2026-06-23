@@ -1,9 +1,12 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "CommonJS",
-    "moduleResolution": "node",
-    "lib": ["ES2022"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    /* DOM is required for browser globals used in client.ts (fetch, WebSocket).
+       The server entry is compiled alongside client.ts in the same pass; the
+       DOM types are benign for Node.js code and skipLibCheck covers any gaps. */
+    "lib": ["ES2022", "DOM"],
     "outDir": "./dist",
     "rootDir": "./src",
     "strict": true,

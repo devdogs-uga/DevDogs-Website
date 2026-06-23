@@ -4,15 +4,15 @@ import { refresh } from "next/cache";
 import { authenticate, expectUserWith } from "../auth";
 import { unlinkProfile } from "../auth/providers/github";
 import { db } from "../db";
-import { oauthRegistrations } from "../db/schema/public";
+import { oauthRegistrations } from '../db/schema';
 import { supabaseAdmin } from "../../supabase/admin";
 
 export default async function unlinkGithubProfile() {
   const user = await expectUserWith({
-    profile: { with: { oauthClient: true } },
-  }).catch(() => authenticate("google", "/settings/profile"));
+    profile: { with: { oauthRegistration: true } },
+  }).catch(() => authenticate("google", "/console/profile"));
 
-  const clientId = user.profile?.oauthClient?.clientId;
+  const clientId = user.profile.oauthRegistration?.clientId;
   if (clientId) {
     await db.transaction(async (tx) => {
       await tx

@@ -1,16 +1,269 @@
 @import "tailwindcss";
+@import "@devdogsuga/feedback-client/react/styles.css";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
 @plugin "@tailwindcss/typography";
 @plugin "@tailwindcss/forms";
 
 @theme {
+  --color-background: var(--color-mauve-950);
+  --color-foreground: var(--color-white);
+  --color-muted: var(--color-mauve-900);
+  --color-muted-foreground: var(--color-mauve-400);
+  --color-border: var(--color-mauve-800);
+  --color-input: var(--color-mauve-800);
+  --color-primary: var(--color-white);
+  --color-primary-foreground: var(--color-mauve-950);
+  --color-secondary: var(--color-mauve-800);
+  --color-secondary-foreground: var(--color-white);
+  --color-accent: var(--color-mauve-800);
+  --color-accent-foreground: var(--color-white);
+  --color-destructive: var(--color-rose-600);
+  --color-destructive-foreground: var(--color-white);
+  --color-popover: var(--color-mauve-950);
+  --color-popover-foreground: var(--color-white);
+  --color-card: var(--color-mauve-900);
+  --color-card-foreground: var(--color-white);
+  --color-ring: var(--color-mauve-500);
+  --color-overlay: oklch(0% 0 0 / 65%);
+
+  --color-sidebar-background: var(--color-mauve-950);
+  --color-sidebar-foreground: var(--color-white);
+  --color-sidebar-primary: var(--color-white);
+  --color-sidebar-primary-foreground: var(--color-mauve-950);
+  --color-sidebar-accent: var(--color-mauve-800);
+  --color-sidebar-accent-foreground: var(--color-white);
+  --color-sidebar-border: var(--color-mauve-800);
+  --color-sidebar-ring: var(--color-mauve-500);
+
+  --block-shadow-sm: 2px;
+  --block-shadow-md: 4px;
+  --block-shadow-lg: 5px;
+
   --font-sans:
     var(--font-sans), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
     "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-display: var(--font-display), sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, monospace;
   --animate-wave: wave 5s linear infinite;
   --animate-collapsible-open: collapsible-open 200ms ease-in;
   --animate-collapsible-closed: collapsible-closed 200ms ease-out;
   --animate-dialog-slide-in: dialog-slide-in 200ms ease-in;
   --animate-dialog-slide-out: dialog-slide-out 200ms ease-out;
+  /* Scroll marquee — duration controlled via CSS variable by scroll listener */
+  --animate-marquee-scroll: marquee-scroll var(--marquee-duration, 24s) linear
+    infinite;
+  --animate-march-dashes: march-dashes 1.4s linear infinite;
+  --animate-spin-slow: spin 10s linear infinite;
+  --animate-spin-slower: spin 20s linear infinite;
+  --animate-modal-overlay-in: modal-overlay-in 180ms ease-out;
+  --animate-modal-overlay-out: modal-overlay-out 150ms ease-in;
+  --animate-modal-content-in: modal-content-in 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-modal-content-out: modal-content-out 150ms ease-in;
+}
+
+@property --sidebar-width {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 256px;
+}
+
+/* ── Marquee skew system ─────────────────────────────────────────────────── */
+/*                                                                            */
+/* HOW IT WORKS                                                               */
+/*                                                                            */
+/* Tilted marquee strips sit between page sections. Each marquee is a full-  */
+/* width div with transform: skewY(±var(--skew-angle)) applied via inline    */
+/* style. The section above/below has a matching diagonal clip-path so its   */
+/* colored background meets the marquee edge exactly.                         */
+/*                                                                            */
+/* --skew-angle  The skew angle applied to marquees. Used directly in        */
+/*               transform: skewY(var(--skew-angle)) via inline style.       */
+/*                                                                            */
+/* --skew-slope  The vertical offset at the right edge of a skewed element   */
+/*               (= element_width × tan(angle) ≈ 100cqw × tan(angle)). Uses  */
+/*               container query units so the slope tracks the width of the  */
+/*               nearest containing block (e.g. <main> when a sidebar is     */
+/*               open) instead of the full page width.                       */
+/*               Used for:                                                    */
+/*                 • clip-path polygon vertex offsets on sections             */
+/*                 • negative margin (marginTop or marginBottom) on marquees  */
+/*                 • paddingTop / paddingBottom on adjacent sections so the   */
+/*                   section background fills behind the marquee              */
+/*                                                                            */
+/* Both variables share the same numeric angle, so they are always in sync.  */
+/* transform-origin is always "top left" so the left edge stays fixed and    */
+/* only the right edge shifts — matching the clip-path polygon math.         */
+/*                                                                            */
+/* SLOPE DIRECTION RULES (with transform-origin: top left)                   */
+/*                                                                            */
+/*   skewY(+angle)  →  "\" slope: left edge fixed, right edge goes DOWN      */
+/*   skewY(-angle)  →  "/" slope: left edge fixed, right edge goes UP        */
+/*                                                                            */
+/* MARGIN RULE                                                                */
+/*                                                                            */
+/*   "\" marquee: marginTop = -slope (pull up into section above)            */
+/*   "/" marquee: marginBottom = -slope (pull section below up into strip)   */
+/*                                                                            */
+/* CLIP-PATH RULE (polygon vertex at the diagonal edge)                      */
+/*                                                                            */
+/*   "\" bottom of section above:  (0, 100%-slope) → (100%, 100%)           */
+/*   "\" top of section below:     (0, 0)           → (100%, slope)          */
+/*   "/" bottom of section above:  (0, 100%)        → (100%, 100%-slope)     */
+/*   "/" top of section below:     (0, slope)        → (100%, 0)             */
+/*                                                                            */
+:root {
+  --skew-angle: 2deg;
+  --skew-slope: calc(tan(2deg) * 100cqw);
+  /* Section width = 100cqw - 2×mx-4 (2×1rem). Slope scaled to section width so
+     section diagonals are parallel to the full-width marquee strips. */
+  --section-skew-slope: calc(tan(2deg) * (100cqw - 2rem));
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+}
+
+@media (min-width: 768px) {
+  :root {
+    --skew-angle: 4deg;
+    --skew-slope: calc(tan(4deg) * 100cqw);
+    /* Section width = 100cqw - 2×md:mx-6 (2×1.5rem = 3rem). */
+    --section-skew-slope: calc(tan(4deg) * (100cqw - 3rem));
+  }
+}
+
+/* Block shadows — flat offset shadow. Size via sm/md/lg; color via shadow-{color}. */
+@utility shadow-block-* {
+  --tw-shadow-block: --value(--block-shadow-*) --value(--block-shadow-*) 0 0
+    var(--tw-shadow-color, black);
+  @apply shadow-(--tw-shadow-block);
+}
+
+/* Block-style drop shadow — composes with other filter utilities via --tw-drop-shadow. */
+@utility drop-shadow-block-* {
+  --tw-drop-shadow-block: drop-shadow(
+    --value(--block-shadow-*) --value(--block-shadow-*) 0
+      var(--tw-shadow-color, black)
+  );
+  @apply drop-shadow-(--tw-drop-shadow-block);
+}
+
+/* Marquee strip skew — skews full-width strips along the site's diagonal system */
+@utility skew-section {
+  margin-top: calc(-1 * var(--section-skew-slope));
+  transform: skewY(var(--skew-angle));
+  transform-origin: top left;
+}
+
+@utility skew-section-neg {
+  margin-bottom: calc(-1 * var(--section-skew-slope));
+  transform: skewY(calc(-1 * var(--skew-angle)));
+  transform-origin: top left;
+}
+
+/* Button/card lift transition — translate + box-shadow */
+@utility transition-lift {
+  transition-property: translate, box-shadow;
+  transition-timing-function: var(--default-transition-timing-function);
+  transition-duration: var(--default-transition-duration);
+}
+
+/* Block-style text shadow — text-shadow-block-{color} e.g. text-shadow-block-rose-900 */
+@utility text-shadow-block-* {
+  --tw-text-shadow-block: --value(--block-shadow-*) --value(--block-shadow-*) 0
+    var(--tw-shadow-color, black);
+  @apply text-shadow-(--tw-text-shadow-block);
+}
+
+/* Dense dot-grid for nav/footer corners */
+@utility bg-dot-grid {
+  background-image: radial-gradient(
+    circle,
+    theme(--color-mauve-300) 1px,
+    transparent 1px
+  );
+  background-size: 24px 24px;
+}
+
+@utility bg-dot-grid-dense {
+  background-image: radial-gradient(circle, currentColor 1px, transparent 1px);
+  background-size: 14px 14px;
+}
+
+/* ── Section scroll-in animations ───────────────────────────────────────── */
+/* Applied via data-animate attribute; JS adds .is-visible once in viewport  */
+[data-animate] {
+  transition:
+    opacity 0.65s ease,
+    transform 0.65s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+[data-animate="fade-up"] {
+  opacity: 0;
+  transform: translateY(36px) scale(0.95);
+}
+
+[data-animate="fade-left"] {
+  opacity: 0;
+  transform: translateX(-44px) scale(0.95) rotate(1deg);
+}
+
+[data-animate="fade-right"] {
+  opacity: 0;
+  transform: translateX(44px) scale(0.95) rotate(-1deg);
+}
+
+[data-animate="scale-up"] {
+  opacity: 0;
+  transform: scale(0.86) rotate(-2deg);
+}
+
+[data-animate="fade-in"] {
+  opacity: 0;
+  transform: scale(0.94);
+}
+
+[data-animate].is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* ── Scroll marquee keyframe ─────────────────────────────────────────────── */
+@keyframes marquee-scroll {
+  to {
+    transform: translateX(-50%);
+  }
 }
 
 @keyframes dialog-slide-in {
@@ -35,6 +288,26 @@
     transform: translateX(-100%);
     opacity: 0;
   }
+}
+
+@keyframes modal-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modal-overlay-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes modal-content-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes modal-content-out {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(8px) scale(0.97); }
 }
 
 @keyframes wave {
@@ -96,6 +369,40 @@
   }
 }
 
+/* Menu expand/collapse — origin driven by --menu-origin CSS var set in JS */
+@keyframes menu-expand {
+  from {
+    clip-path: circle(0% at var(--menu-origin, calc(100% - 46px) 36px));
+  }
+
+  to {
+    clip-path: circle(150% at var(--menu-origin, calc(100% - 46px) 36px));
+  }
+}
+
+@keyframes menu-collapse {
+  from {
+    clip-path: circle(150% at var(--menu-origin, calc(100% - 46px) 36px));
+  }
+
+  to {
+    clip-path: circle(0% at var(--menu-origin, calc(100% - 46px) 36px));
+  }
+}
+
+/* Marching-ants SVG stroke — dasharray sum must match offset for seamless loop */
+@keyframes march-dashes {
+  from {
+    stroke-dashoffset: 0;
+    stroke-dasharray: 6 3;
+  }
+
+  to {
+    stroke-dashoffset: -9;
+    stroke-dasharray: 6 3;
+  }
+}
+
 @keyframes collapsible-closed {
   0% {
     height: var(--radix-collapsible-content-height);
@@ -109,5 +416,395 @@
   100% {
     height: 0;
     opacity: 0%;
+  }
+}
+
+@keyframes leader-card-expand {
+  from {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+/* ── LeaderCard hover-card 3D entrance / exit ────────────────────────────── */
+/* Radix positions the card via [data-radix-popper-content-wrapper]; the      */
+/* HoverCard.Content element itself is transform-free, so we can animate it. */
+/* Radix Presence detects animationend on the element and waits before        */
+/* unmounting, giving the exit animation time to complete.                    */
+@keyframes hovercard-right {
+  from {
+    opacity: 0;
+    transform: perspective(800px) rotateY(-20deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: perspective(800px) rotateY(0deg);
+  }
+}
+
+@keyframes hovercard-left {
+  from {
+    opacity: 0;
+    transform: perspective(800px) rotateY(20deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: perspective(800px) rotateY(0deg);
+  }
+}
+
+@keyframes hovercard-bottom {
+  from {
+    opacity: 0;
+    transform: perspective(800px) rotateX(20deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: perspective(800px) rotateX(0deg);
+  }
+}
+
+@keyframes hovercard-top {
+  from {
+    opacity: 0;
+    transform: perspective(800px) rotateX(-20deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: perspective(800px) rotateX(0deg);
+  }
+}
+
+/* transform-origin: the edge closest to the trigger so the card unfolds from there */
+.leader-hover-card[data-side="right"] {
+  transform-origin: left center;
+}
+
+.leader-hover-card[data-side="left"] {
+  transform-origin: right center;
+}
+
+.leader-hover-card[data-side="bottom"] {
+  transform-origin: top center;
+}
+
+.leader-hover-card[data-side="top"] {
+  transform-origin: bottom center;
+}
+
+.leader-hover-card[data-state="open"][data-side="right"] {
+  animation: hovercard-right 0.18s ease-out both;
+}
+
+.leader-hover-card[data-state="open"][data-side="left"] {
+  animation: hovercard-left 0.18s ease-out both;
+}
+
+.leader-hover-card[data-state="open"][data-side="bottom"] {
+  animation: hovercard-bottom 0.18s ease-out both;
+}
+
+.leader-hover-card[data-state="open"][data-side="top"] {
+  animation: hovercard-top 0.18s ease-out both;
+}
+
+/* Reversed keyframes + ease-in timing = natural mirror of the entrance */
+.leader-hover-card[data-state="closed"][data-side="right"] {
+  animation: hovercard-right 0.18s ease-in both reverse;
+}
+
+.leader-hover-card[data-state="closed"][data-side="left"] {
+  animation: hovercard-left 0.18s ease-in both reverse;
+}
+
+.leader-hover-card[data-state="closed"][data-side="bottom"] {
+  animation: hovercard-bottom 0.18s ease-in both reverse;
+}
+
+.leader-hover-card[data-state="closed"][data-side="top"] {
+  animation: hovercard-top 0.18s ease-in both reverse;
+}
+
+/* Invisible hover bridge: extends the card's hit area back across the        */
+/* sideOffset gap toward the trigger, so moving the mouse from the trigger    */
+/* into the card doesn't pass through a dead zone and close the HoverCard.    */
+/* overflow must stay visible (overriding overflow-y-auto) or the bridge      */
+/* pseudo-elements below get clipped since they sit outside the card's box.   */
+.leader-hover-card {
+  position: relative;
+  overflow: visible;
+}
+
+.leader-hover-card[data-side="right"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 100%;
+  width: 24px;
+  height: 100%;
+}
+
+.leader-hover-card[data-side="left"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 100%;
+  width: 24px;
+  height: 100%;
+}
+
+.leader-hover-card[data-side="bottom"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  width: 100%;
+  height: 24px;
+}
+
+.leader-hover-card[data-side="top"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 100%;
+  width: 100%;
+  height: 24px;
+}
+
+/* ── Combobox popover 3D entrance / exit ─────────────────────────────────── */
+
+@property --combobox-animation-x {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0deg;
+}
+
+@property --combobox-animation-y {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0deg;
+}
+
+/* Keyframe animations for Radix-based ComboboxPopover.Content.               */
+/* data-side is set by Radix Popper so we can vary both origin and keyframe.  */
+@keyframes combobox-open {
+  from {
+    opacity: 0;
+    transform: perspective(1200px) rotateX(var(--combobox-animation-x))
+      rotateY(var(--combobox-animation-y));
+  }
+
+  to {
+    opacity: 1;
+    transform: perspective(1200px) rotateX(0deg) rotateY(0deg);
+  }
+}
+
+@utility combobox-popover {
+  /* transform-origin: edge closest to the trigger — same convention as leader-hover-card */
+  &[data-side="bottom"] {
+    --combobox-animation-x: -8deg;
+    transform-origin: top center;
+  }
+
+  &[data-side="top"] {
+    --combobox-animation-x: 8deg;
+    transform-origin: bottom center;
+  }
+
+  &[data-side="right"] {
+    --combobox-animation-y: 8deg;
+    transform-origin: left center;
+  }
+
+  &[data-side="left"] {
+    --combobox-animation-y: -8deg;
+    transform-origin: right center;
+  }
+
+  &[data-state="open"] {
+    animation: combobox-open 0.2s ease-out both;
+  }
+
+  &[data-state="closed"] {
+    animation: combobox-open 0.2s ease-in both reverse;
+  }
+}
+
+/* CSS transitions for standalone ComboboxPanel (non-Radix, always opens below trigger).
+   Transitions — unlike keyframe animations — don't fire on initial render, so the
+   panel safely starts hidden with no flash when the portal mounts before the rAF. */
+@utility combobox-panel {
+  transform-origin: top center;
+
+  &[data-state="open"] {
+    opacity: 1;
+    transform: perspective(500px) rotateX(0deg);
+    transition:
+      opacity 0.2s ease-out,
+      transform 0.2s ease-out,
+      box-shadow 0.2s ease-out;
+    @apply shadow-block-lg;
+  }
+
+  &[data-state="closed"] {
+    opacity: 0;
+    transform: perspective(500px) rotateX(-8deg);
+    transition:
+      opacity 0.2s ease-in,
+      transform 0.2s ease-in,
+      box-shadow 0.2s ease-in;
+  }
+}
+
+/* ── Section diagonal cut overlays ───────────────────────────────────────── */
+/* Approach: sections are plain rounded rectangles (border-radius on the      */
+/* outer wrapper + overflow:hidden). Inside each section, absolutely-          */
+/* positioned black triangle divs cut the diagonal edges. The outer wrapper's */
+/* overflow:hidden rounds the triangle corners automatically — no clip-path    */
+/* rounding needed, works in every browser since 2016.                        */
+/*                                                                             */
+/* Naming: t = top, b = bottom, bs = `\` slope, fs = `/` slope.               */
+/* Each class sets only the clip-path; position/size/colour are set via       */
+/* Tailwind on the element itself.                                             */
+.tri-t-bs {
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
+}
+
+/* top-right  `\` */
+.tri-t-fs {
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+
+/* top-left   `/` */
+.tri-b-bs {
+  clip-path: polygon(0 0, 0 100%, 100% 100%);
+}
+
+/* bot-left   `\` */
+.tri-b-fs {
+  clip-path: polygon(100% 0, 0 100%, 100% 100%);
+}
+
+/* bot-right  `/` */
+
+/* Scroll shadow for sidebar nav list — fades edges when content overflows */
+@utility sidebar-scroll-shadow {
+  background:
+    linear-gradient(var(--color-mauve-950), transparent) top / 100% 20px
+      no-repeat scroll,
+    linear-gradient(transparent, var(--color-mauve-950)) bottom / 100% 20px
+      no-repeat scroll,
+    radial-gradient(farthest-side at 50% 0%, rgb(0 0 0 / 0.15), transparent)
+      top / 100% 10px no-repeat local,
+    radial-gradient(farthest-side at 50% 100%, rgb(0 0 0 / 0.15), transparent)
+      bottom / 100% 10px no-repeat local,
+    var(--color-mauve-950);
+}
+
+/* Custom toasts: hide content of background stack items so only the front    */
+/* toast is legible when collapsed. Sonner handles this for styled toasts     */
+/* via [data-styled='true'], but our toasts are custom (data-styled='false'). */
+[data-sonner-toaster]
+  [data-sonner-toast][data-expanded="false"][data-front="false"]
+  > * {
+  opacity: 0;
+}
+
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
   }
 }

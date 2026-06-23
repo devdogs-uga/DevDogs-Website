@@ -4,9 +4,9 @@ import { authenticate, expectSession } from "../auth";
 import { unlinkProfile } from "../auth/providers/discord";
 
 export default async function unlinkDiscordProfile() {
-  await expectSession().catch(() =>
-    authenticate("google", "/settings/profile"),
+  const userId = await expectSession().catch(() =>
+    authenticate("google", "/console/profile"),
   );
-  await unlinkProfile();
+  await unlinkProfile(userId);
   refresh();
 }

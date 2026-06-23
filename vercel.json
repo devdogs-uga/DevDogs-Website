@@ -7,6 +7,14 @@
     {
       "path": "/api/github/sync-leaderboard",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/deliver-webhooks",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/sync-discord-roles",
+      "schedule": "*/10 * * * *"
     }
   ]
 }

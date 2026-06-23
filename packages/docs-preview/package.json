@@ -3,7 +3,20 @@
   "version": "0.1.0",
   "description": "Local documentation preview server for DevDogs projects",
   "bin": {
-    "docs-preview": "./dist/index.js"
+    "docs-preview": "./dist/server.js"
+  },
+  "exports": {
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "default": "./dist/client.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "client": [
+        "./dist/client.d.ts"
+      ]
+    }
   },
   "scripts": {
     "build": "tsc",
@@ -15,6 +28,7 @@
   },
   "devDependencies": {
     "@types/node": "*",
+    "@types/react": "*",
     "@types/ws": "^8",
     "typescript": "*"
   }

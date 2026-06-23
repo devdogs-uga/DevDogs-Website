@@ -1,0 +1,43 @@
+{
+  "name": "@devdogsuga/feedback-client",
+  "version": "0.1.0",
+  "description": "Client SDK for the DevDogs feedback API",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/react/index.d.ts",
+      "default": "./dist/react/index.js"
+    },
+    "./react/styles.css": "./dist/react/styles.css"
+  },
+  "typesVersions": {
+    "*": {
+      ".": [
+        "./dist/index.d.ts"
+      ],
+      "react": [
+        "./dist/react/index.d.ts"
+      ]
+    }
+  },
+  "scripts": {
+    "build": "tsc && mkdir -p dist/react && cp src/react/styles.css dist/react/styles.css",
+    "dev": "tsc --watch"
+  },
+  "peerDependencies": {
+    "react": "^19",
+    "react-dom": "^19"
+  },
+  "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.16"
+  },
+  "devDependencies": {
+    "@types/node": "*",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "*",
+    "typescript": "*"
+  }
+}
