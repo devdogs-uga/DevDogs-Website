@@ -1,4 +1,5 @@
 # Notice
+
 As of 10/2/24, public development of the DevDogs Website has been discontinued to streamline development efforts and enforce greater quality control. Points awarded from completed contributions will not disappear.
 
 From this point on, only Standing Leaders and vetted members outside of DevDogs' Standing Leadership are permitted to contribute. If this is of interest to you, please reach out to the current Technical Officer.
@@ -10,6 +11,7 @@ We’re excited to have you here! If you’re interested in contributing to our 
 This project is built using [Next.js](https://nextjs.org/) and was bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 ## Technologies We Use
+
 - **Next.js / Node.js**
 - **React.js**
 - **Custom CSS**
@@ -17,6 +19,7 @@ This project is built using [Next.js](https://nextjs.org/) and was bootstrapped 
 - **Tailwind CSS**
 
 ### Contributor Requirements
+
 To contribute to this website, you should have a basic understanding of JavaScript, HTML, CSS, and React.js.
 
 ## Getting Started
@@ -50,8 +53,6 @@ We maintain code quality using ESLint and Prettier. Please ensure your code foll
 
 To run the development server on your local machine, navigate to your project folder in the terminal and use one of the following commands:
 
-
-
 ```bash
 npm run dev
 # or
@@ -72,7 +73,6 @@ Here are some resources:
 
 - [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
 - [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [Learn Tailwind CSS]([https://nextjs.org/learn](https://tailwindcss.com/)) - documentation for Tailwind CSS.
+- [Learn Tailwind CSS](<[https://nextjs.org/learn](https://tailwindcss.com/)>) - documentation for Tailwind CSS.
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
-

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": {
+    "deploymentEnabled": false
+  },
+  "crons": [
+    {
+      "path": "/api/github/sync-leaderboard",
+      "schedule": "0 0 * * *"
+    }
+  ]
+}
