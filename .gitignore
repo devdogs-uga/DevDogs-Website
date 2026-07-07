@@ -56,3 +56,11 @@ volumes/s3/*
 branch_structure.json
 temp_auto_push.bat
 temp_interactive_push.bat
+
+# OpenNext
+.open-next
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
