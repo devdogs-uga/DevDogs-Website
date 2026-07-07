@@ -20,7 +20,6 @@
     "format:write": "prettier --write \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
     "lint": "eslint src",
     "lint:fix": "eslint --fix src",
-    "postinstall": "pnpm docker:reset && pnpm docker:build",
     "prettier": "prettier -w .",
     "prettier:check": "prettier -c .",
     "preview": "next build && next start",
