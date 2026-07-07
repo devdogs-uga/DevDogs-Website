@@ -24,10 +24,16 @@
 		// see https://opennext.js.org/cloudflare/howtos/image
 		"binding": "IMAGES"
 	},
-  "observability": {
-    "logs": {
-      "enabled": true,
-      "invocation_logs": true
-    }
-  }
+	"observability": {
+		"logs": {
+			"enabled": true,
+			"invocation_logs": true
+		}
+	},
+	"routes": [
+		{
+			"pattern": "devdogsuga.org",
+			"custom_domain": true
+		}
+	]
 }
